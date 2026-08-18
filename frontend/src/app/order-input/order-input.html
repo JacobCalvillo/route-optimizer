@@ -1,0 +1,125 @@
+<section class="panel">
+  <header>
+    <h2>New orders</h2>
+    <p class="hint">
+      Paste dispatcher notes in plain language, one delivery per line or separated by semicolons.
+    </p>
+  </header>
+
+  <textarea
+    rows="6"
+    [ngModel]="text()"
+    (ngModelChange)="text.set($event)"
+    placeholder="entregar en Av. Insurgentes Sur 1602, urgente; paquete para Juan en Reforma 222, sin prisa"
+  ></textarea>
+
+  <div class="actions">
+    <button type="button" (click)="parse()" [disabled]="busy() || !text().trim()">
+      {{ busy() ? 'Working…' : 'Parse' }}
+    </button>
+    <button type="button" class="primary" (click)="confirm()" [disabled]="busy() || !text().trim()">
+      Confirm and geocode
+    </button>
+    <button type="button" class="ghost" (click)="loadExample()">Example</button>
+    <button type="button" class="ghost" (click)="clear()" [disabled]="!text()">Clear</button>
+  </div>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  @if (preview(); as parsed) {
+    <div class="preview">
+      <h3>Interpreted as {{ parsed.length }} order(s)</h3>
+      @if (parsed.length === 0) {
+        <p class="hint">No deliveries found in that text.</p>
+      }
+      <ul>
+        @for (order of parsed; track $index) {
+          <li>
+            <span class="chip" [class]="'chip-' + order.priority.toLowerCase()">
+              {{ order.priority }}
+            </span>
+            <span class="address" [class.missing]="!order.address">
+              {{ order.address ?? 'no address found' }}
+            </span>
+            <span class="meta">{{ window(order) }}</span>
+            @if (order.customerName) {
+              <span class="meta">for {{ order.customerName }}</span>
+            }
+            @if (order.notes) {
+              <span class="notes">{{ order.notes }}</span>
+            }
+          </li>
+        }
+      </ul>
+      <p class="hint">Nothing is saved yet. Press “Confirm and geocode” to store these.</p>
+    </div>
+  }
+
+  <div class="manual">
+    <button type="button" class="ghost" (click)="manualOpen.set(!manualOpen())">
+      {{ manualOpen() ? '− Hide manual entry' : '+ Add one order manually' }}
+    </button>
+
+    @if (manualOpen()) {
+      <div class="manual-form">
+        <label class="wide">
+          Address
+          <input
+            type="text"
+            [ngModel]="manual().address"
+            (ngModelChange)="patchManual({ address: $event })"
+            placeholder="Av. Insurgentes Sur 1602, Ciudad de Mexico"
+          />
+        </label>
+        <label>
+          Customer
+          <input
+            type="text"
+            [ngModel]="manual().customerName"
+            (ngModelChange)="patchManual({ customerName: $event })"
+          />
+        </label>
+        <label>
+          Priority
+          <select
+            [ngModel]="manual().priority"
+            (ngModelChange)="patchManual({ priority: $event })"
+          >
+            @for (priority of priorities; track priority) {
+              <option [value]="priority">{{ priority }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          From
+          <input
+            type="time"
+            [ngModel]="manual().timeFrom"
+            (ngModelChange)="patchManual({ timeFrom: $event })"
+          />
+        </label>
+        <label>
+          Until
+          <input
+            type="time"
+            [ngModel]="manual().timeTo"
+            (ngModelChange)="patchManual({ timeTo: $event })"
+          />
+        </label>
+        <div class="actions wide">
+          <button
+            type="button"
+            class="primary"
+            (click)="addManual()"
+            [disabled]="busy() || !manual().address.trim()"
+          >
+            Add and geocode
+          </button>
+        </div>
+      </div>
+      <p class="hint">Skips the model entirely — useful when no ANTHROPIC_API_KEY is configured.</p>
+    }
+  </div>
+</section>

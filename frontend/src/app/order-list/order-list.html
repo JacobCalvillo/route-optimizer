@@ -1,0 +1,101 @@
+<section class="panel">
+  <header class="row">
+    <h2>Orders ({{ orders().length }})</h2>
+    @if (unresolvedCount() > 0) {
+      <button type="button" class="ghost" (click)="retryGeocoding()" [disabled]="busy()">
+        Retry geocoding ({{ unresolvedCount() }})
+      </button>
+    }
+  </header>
+
+  @if (orders().length === 0) {
+    <p class="hint">No orders yet. Add some above.</p>
+  }
+
+  <ul class="orders">
+    @for (order of orders(); track order.id) {
+      <li [class.unresolved]="order.geocodeStatus !== 'OK'">
+        @if (editingId() === order.id) {
+          <div class="edit">
+            <label>
+              Address
+              <input
+                type="text"
+                [ngModel]="draft().address"
+                (ngModelChange)="patchDraft({ address: $event })"
+              />
+            </label>
+            <label>
+              Customer
+              <input
+                type="text"
+                [ngModel]="draft().customerName"
+                (ngModelChange)="patchDraft({ customerName: $event })"
+              />
+            </label>
+            <label>
+              Priority
+              <select
+                [ngModel]="draft().priority"
+                (ngModelChange)="patchDraft({ priority: $event })"
+              >
+                @for (priority of priorities; track priority) {
+                  <option [value]="priority">{{ priority }}</option>
+                }
+              </select>
+            </label>
+            <label>
+              From
+              <input
+                type="time"
+                [ngModel]="draft().timeFrom"
+                (ngModelChange)="patchDraft({ timeFrom: $event })"
+              />
+            </label>
+            <label>
+              Until
+              <input
+                type="time"
+                [ngModel]="draft().timeTo"
+                (ngModelChange)="patchDraft({ timeTo: $event })"
+              />
+            </label>
+            <div class="actions">
+              <button type="button" class="primary" (click)="save(order)" [disabled]="busy()">
+                Save
+              </button>
+              <button type="button" class="ghost" (click)="cancelEdit()">Cancel</button>
+            </div>
+          </div>
+        } @else {
+          <div class="summary">
+            <span class="chip" [class]="'chip-' + order.priority.toLowerCase()">
+              {{ order.priority }}
+            </span>
+            <div class="body">
+              <span class="address">{{ order.rawAddress ?? 'no address' }}</span>
+              @if (order.normalizedAddress) {
+                <span class="resolved">{{ order.normalizedAddress }}</span>
+              }
+              <span class="meta">
+                {{ window(order) }}
+                @if (order.customerName) {
+                  · {{ order.customerName }}
+                }
+                @if (order.geocodeStatus !== 'OK') {
+                  · <strong class="warn">{{ order.geocodeStatus }}</strong>
+                }
+              </span>
+            </div>
+            <div class="actions">
+              <button type="button" class="ghost" (click)="startEdit(order)">Edit</button>
+              <button type="button" class="ghost danger" (click)="remove(order)" [disabled]="busy()">
+                Delete
+              </button>
+            </div>
+          </div>
+        }
+      </li>
+    }
+  </ul>
+</section>

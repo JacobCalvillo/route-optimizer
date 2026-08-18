@@ -1,0 +1,34 @@
+@if (route(); as optimized) {
+  <section class="panel">
+    <h2>Stops in order</h2>
+    <ol class="stops">
+      @for (stop of optimized.stops; track stop.sequence) {
+        <li [class.late]="stop.lateMinutes > 0">
+          <span class="seq">{{ stop.sequence }}</span>
+          <div class="body">
+            <span class="label">{{ stop.label }}</span>
+            <span class="meta">
+              ETA {{ stop.eta }}
+              @if (window(stop); as w) {
+                · window {{ w }}
+              }
+              · {{ kilometres(stop.distanceFromPreviousMeters) }} km from previous
+            </span>
+            @if (stop.waitMinutes > 0) {
+              <span class="meta">Waits {{ stop.waitMinutes }} min for the window to open</span>
+            }
+            @if (stop.lateMinutes > 0) {
+              <span class="violation">
+                Arrives {{ stop.lateMinutes }} min after the {{ stop.timeTo }} deadline
+              </span>
+            }
+          </div>
+          <span class="chip" [class]="'chip-' + stop.priority.toLowerCase()">{{ stop.priority }}</span>
+        </li>
+      }
+    </ol>
+    <p class="hint">
+      Then returns to {{ optimized.depotLabel }} ({{ kilometres(optimized.returnToDepotMeters) }} km).
+    </p>
+  </section>
+}

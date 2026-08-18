@@ -1,0 +1,44 @@
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 0.6rem;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.6rem;
+  border-radius: 6px;
+  background: var(--surface-alt);
+}
+
+.value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.value.good {
+  color: var(--success);
+}
+
+.label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.warnings {
+  margin: 0.6rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.ok {
+  margin: 0.6rem 0 0;
+  color: var(--success);
+  font-size: 0.85rem;
+}

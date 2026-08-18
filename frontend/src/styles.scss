@@ -1,0 +1,173 @@
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-alt: #f0f2f5;
+  --border: #d7dbe0;
+  --text: #1b1f24;
+  --muted: #656d76;
+  --accent: #2563eb;
+  --danger: #c62828;
+  --success: #15803d;
+  --urgent: #d94a2b;
+  --normal: #2563eb;
+  --low: #6b7280;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14171a;
+    --surface: #1c2024;
+    --surface-alt: #23282d;
+    --border: #333a41;
+    --text: #e6e9ec;
+    --muted: #9aa4ae;
+    --accent: #4f8ef7;
+    --danger: #f2635c;
+    --success: #4ade80;
+    --urgent: #f2764f;
+    --normal: #4f8ef7;
+    --low: #8b949e;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 1.25rem;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.4rem;
+}
+
+h2 {
+  font-size: 1.05rem;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9rem;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin: 0.3rem 0 0;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+button {
+  font: inherit;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: inherit;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  &.ghost {
+    background: transparent;
+  }
+
+  &.danger {
+    color: var(--danger);
+  }
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85em;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.chip-urgent {
+  background: var(--urgent);
+}
+
+.chip-normal {
+  background: var(--normal);
+}
+
+.chip-low {
+  background: var(--low);
+}
+
+/*
+ * Leaflet marker styles must live here rather than in route-map.scss: Leaflet builds these
+ * elements itself, so Angular's per-component style encapsulation never tags them.
+ */
+.pin {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78rem;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 40%);
+}
+
+.pin-depot {
+  background: #111827;
+}
+
+.pin-urgent {
+  background: var(--urgent);
+}
+
+.pin-normal {
+  background: var(--normal);
+}
+
+.pin-low {
+  background: var(--low);
+}
+
+.pin-late {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgb(198 40 40 / 55%);
+}
+
+.pin-pending {
+  background: var(--muted);
+  border-width: 2px;
+}

@@ -1,0 +1,89 @@
+<header class="app-header">
+  <div>
+    <h1>Delivery Route Optimizer</h1>
+    <p class="hint">
+      Claude reads the orders; nearest-neighbour and 2-opt decide the sequence.
+    </p>
+  </div>
+  @if (health(); as status) {
+    <div class="status">
+      <span class="dot" [class.on]="status.aiParserAvailable"></span>
+      <span>
+        parser
+        {{ status.aiParserAvailable ? status.model : 'unavailable (no ANTHROPIC_API_KEY)' }}
+        · matrix <code>{{ status.matrixProvider }}</code>
+      </span>
+    </div>
+  } @else {
+    <div class="status"><span class="dot"></span><span>backend unreachable</span></div>
+  }
+</header>
+
+@if (error()) {
+  <p class="panel error">{{ error() }}</p>
+}
+
+<main class="layout">
+  <div class="column">
+    <app-order-input (ordersCreated)="refreshOrders(); refreshHealth()" />
+    <app-order-list [orders]="orders()" (changed)="refreshOrders()" />
+  </div>
+
+  <div class="column">
+    <section class="panel">
+      <h2>Route</h2>
+      <div class="depot-form">
+        <label>
+          Depot label
+          <input
+            type="text"
+            [ngModel]="depotLabel()"
+            (ngModelChange)="depotLabel.set($event)"
+          />
+        </label>
+        <label>
+          Latitude
+          <input
+            type="number"
+            step="0.0001"
+            [ngModel]="depotLat()"
+            (ngModelChange)="depotLat.set(+$event)"
+          />
+        </label>
+        <label>
+          Longitude
+          <input
+            type="number"
+            step="0.0001"
+            [ngModel]="depotLon()"
+            (ngModelChange)="depotLon.set(+$event)"
+          />
+        </label>
+        <label>
+          Departure
+          <input
+            type="time"
+            [ngModel]="departureTime()"
+            (ngModelChange)="departureTime.set($event)"
+          />
+        </label>
+      </div>
+      <button
+        type="button"
+        class="primary wide"
+        (click)="optimize()"
+        [disabled]="optimizing() || routableCount() === 0"
+      >
+        {{ optimizing() ? 'Optimizing…' : 'Optimize route (' + routableCount() + ' stops)' }}
+      </button>
+    </section>
+
+    <app-route-summary [route]="route()" />
+
+    <div class="map-panel panel">
+      <app-route-map [route]="route()" [orders]="orders()" />
+    </div>
+
+    <app-stop-list [route]="route()" />
+  </div>
+</main>
