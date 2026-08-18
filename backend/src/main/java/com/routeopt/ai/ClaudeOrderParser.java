@@ -19,8 +19,6 @@ public class ClaudeOrderParser implements OrderParser {
 
     private static final Logger log = LoggerFactory.getLogger(ClaudeOrderParser.class);
 
-    private static final String API_KEY_ENV = "ANTHROPIC_API_KEY";
-
     /*
      * Written in English, but the input it will see is Spanish (Mexico). Saying so explicitly is
      * what keeps the model from "helpfully" translating addresses before returning them.
@@ -61,7 +59,7 @@ public class ClaudeOrderParser implements OrderParser {
 
     @Override
     public boolean isAvailable() {
-        String key = System.getenv(API_KEY_ENV);
+        String key = properties.ai().apiKey();
         return key != null && !key.isBlank();
     }
 
@@ -124,8 +122,11 @@ public class ClaudeOrderParser implements OrderParser {
             synchronized (this) {
                 local = client;
                 if (local == null) {
-                    // Reads ANTHROPIC_API_KEY (and ANTHROPIC_BASE_URL, if set) from the environment.
-                    local = AnthropicOkHttpClient.fromEnv();
+                    // The key is passed explicitly rather than via fromEnv() so it can also come
+                    // from backend/.env, which the JVM's own environment never sees.
+                    local = AnthropicOkHttpClient.builder()
+                            .apiKey(properties.ai().apiKey())
+                            .build();
                     client = local;
                 }
             }

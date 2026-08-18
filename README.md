@@ -33,10 +33,30 @@ The model is called exactly once per batch of text, and never again.
 - Node 20 or newer
 - An Anthropic API key, if you want free-form parsing. Everything else works without one.
 
+### Configure
+
+Each side has a `.env` (gitignored) alongside a tracked `.env.example` documenting every key:
+
+```powershell
+cd backend;  cp .env.example .env    # then paste your ANTHROPIC_API_KEY
+cd ..\frontend; cp .env.example .env # BACKEND_URL, only if you moved the backend off 8080
+```
+
+`backend/.env` is read by Spring via `spring.config.import` and holds both the API key and any
+`app.*` / `server.*` override you want locally. `frontend/.env` is read by `proxy.conf.js` and only
+affects the dev server — **never put a secret in it**, since anything the frontend can read is
+visible in devtools.
+
+Real environment variables take precedence over `.env`, so CI and containers override anything
+without editing files:
+
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."   # wins over backend/.env
+```
+
 ### Backend
 
 ```powershell
-$env:ANTHROPIC_API_KEY = "sk-ant-..."   # optional; omit to use manual order entry only
 cd backend
 .\mvnw spring-boot:run                   # http://localhost:8080
 ```
@@ -120,10 +140,17 @@ curl -X POST http://localhost:8080/api/routes/optimize -H "Content-Type: applica
 
 ## Configuration
 
-Everything lives under `app.*` in `backend/src/main/resources/application.yml`.
+Defaults live in `backend/src/main/resources/application.yml`; override any of them in
+`backend/.env` or as an environment variable.
+
+> **`.env` is parsed as a Java properties file, not by a shell.** So: no `export`, no `$VAR`
+> expansion, and **do not quote values** — quotes become part of the value. Use dotted keys
+> (`app.routing.matrix=osrm`), not `APP_ROUTING_MATRIX`; the uppercase form only works as a real
+> environment variable.
 
 | Property | Default | What it does |
 |---|---|---|
+| `ANTHROPIC_API_KEY` | — | API key; blank disables free-form parsing only |
 | `app.ai.model` | `claude-opus-5` | Model used for extraction |
 | `app.ai.max-tokens` | `8000` | Covers thinking **and** the JSON answer — don't drop below ~4000 |
 | `app.geocoding.user-agent` | — | **Change this.** Nominatim's policy requires an identifying value |

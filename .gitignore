@@ -21,6 +21,7 @@ backend/data/
 .DS_Store
 Thumbs.db
 
-# Never commit credentials
+# Never commit credentials. The .example templates are safe to track.
 .env
-*.env.local
+.env.*
+!.env.example

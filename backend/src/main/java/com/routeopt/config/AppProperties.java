@@ -11,6 +11,8 @@ public record AppProperties(Cors cors, Ai ai, Geocoding geocoding, Routing routi
     public record Cors(@DefaultValue("http://localhost:4200") List<String> allowedOrigins) {}
 
     public record Ai(
+            /* Bound from ANTHROPIC_API_KEY (environment or backend/.env). Blank disables parsing. */
+            @DefaultValue("") String apiKey,
             @DefaultValue("claude-opus-5") String model,
             /*
              * On claude-opus-5 thinking is on by default and max-tokens caps thinking plus the

@@ -1,6 +1,10 @@
 spring:
   application:
     name: route-optimizer
+  config:
+    # Reads backend/.env as a properties file when present. Real environment variables still win
+    # over it, so CI and containers can override anything without editing the file.
+    import: optional:file:.env[.properties]
   datasource:
     url: jdbc:h2:file:./data/routeopt;AUTO_SERVER=TRUE
     driver-class-name: org.h2.Driver
@@ -27,6 +31,9 @@ app:
     allowed-origins: http://localhost:4200
 
   ai:
+    # Resolved from the ANTHROPIC_API_KEY environment variable or from backend/.env.
+    # Blank means free-form parsing is disabled; everything else still works.
+    api-key: ${ANTHROPIC_API_KEY:}
     # Model used to extract structured orders from free-form text.
     model: claude-opus-5
     # max-tokens must cover thinking plus the JSON answer; do not drop below ~4000.
