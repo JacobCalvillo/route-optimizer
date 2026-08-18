@@ -5,7 +5,9 @@ import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.errors.AnthropicServiceException;
 import com.anthropic.errors.RateLimitException;
 import com.anthropic.models.messages.MessageCreateParams;
+import com.anthropic.models.messages.OutputConfig;
 import com.anthropic.models.messages.StructuredMessageCreateParams;
+import com.anthropic.models.messages.StructuredOutputConfig;
 import com.routeopt.config.AppProperties;
 import java.util.List;
 import org.slf4j.Logger;
@@ -74,11 +76,20 @@ public class ClaudeOrderParser implements OrderParser {
                     "ANTHROPIC_API_KEY is not set, so free-form order parsing is unavailable.");
         }
 
+        // Schema and effort have to be set on the same StructuredOutputConfig: the shorthand
+        // .outputConfig(ParsedOrders.class) and .outputConfig(OutputConfig) occupy the same builder
+        // slot, so using the shorthand would silently discard the effort level.
+        StructuredOutputConfig<ParsedOrders> outputConfig = StructuredOutputConfig
+                .<ParsedOrders>builder()
+                .format(ParsedOrders.class)
+                .effort(OutputConfig.Effort.of(properties.ai().effort()))
+                .build();
+
         StructuredMessageCreateParams<ParsedOrders> params = MessageCreateParams.builder()
                 .model(properties.ai().model())
                 .maxTokens(properties.ai().maxTokens())
                 .system(SYSTEM_PROMPT)
-                .outputConfig(ParsedOrders.class)
+                .outputConfig(outputConfig)
                 .addUserMessage(freeText)
                 .build();
 
