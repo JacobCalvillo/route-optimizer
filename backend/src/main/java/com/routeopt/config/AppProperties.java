@@ -19,7 +19,7 @@ public record AppProperties(Cors cors, Ai ai, Geocoding geocoding, Routing routi
              * answer, so a value tuned for the JSON alone would truncate the response.
              */
             @DefaultValue("8000") long maxTokens,
-            @DefaultValue("LOW") String effort) {}
+            @DefaultValue("low") String effort) {}
 
     public record Geocoding(
             @DefaultValue("https://nominatim.openstreetmap.org") String baseUrl,

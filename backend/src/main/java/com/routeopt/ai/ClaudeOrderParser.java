@@ -10,6 +10,7 @@ import com.anthropic.models.messages.StructuredMessageCreateParams;
 import com.anthropic.models.messages.StructuredOutputConfig;
 import com.routeopt.config.AppProperties;
 import java.util.List;
+import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -24,39 +25,70 @@ public class ClaudeOrderParser implements OrderParser {
     /*
      * Written in English, but the input it will see is Spanish (Mexico). Saying so explicitly is
      * what keeps the model from "helpfully" translating addresses before returning them.
+     *
+     * The closing paragraph is not boilerplate. The derived schema marks every field required and
+     * non-nullable, so asking for null here would put the prompt and the grammar in direct
+     * conflict — see ParsedOrder for what that conflict does to the output.
      */
     private static final String SYSTEM_PROMPT =
             """
             You extract delivery orders from dispatcher notes for a courier company in Mexico.
 
-            The input is free-form text, normally written in Mexican Spanish, and may describe \
-            several deliveries in one go, separated by semicolons, line breaks, or just prose. \
-            Return exactly one entry per delivery.
+            The input is free-form text, normally written in Mexican Spanish, and may describe
+            several deliveries in one go, separated by semicolons, line breaks, or just prose.
+            Return one entry per delivery, in the order they appear. A note that lists six
+            deliveries must produce six entries.
 
             Rules:
-            - Copy the address verbatim from the input. Do not translate it, expand abbreviations, \
-              add a city or postal code that is not there, or invent an address. If a delivery has \
-              no recognizable address, set address to null and keep whatever else you found.
-            - priority is URGENT when the text conveys haste ("urgente", "lo antes posible", \
-              "es para ya", "prioridad alta"), LOW when it explicitly says there is no rush \
-              ("sin prisa", "cuando se pueda", "no corre prisa"), and NORMAL otherwise. Do not \
-              guess URGENT from a delivery window alone.
-            - timeFrom and timeTo are HH:mm on a 24-hour clock. "antes de las 13:00" gives only \
-              timeTo, "despues de las 9" gives only timeFrom, "entre 10 y 12" gives both. Convert \
-              12-hour expressions ("5 de la tarde") to 24-hour form. Leave them null when absent.
-            - Put anything else useful (apartment or suite number, phone, gate code, "dejar con el \
+            - Copy the address verbatim from the input. Do not translate it, expand abbreviations,
+              add a city or postal code that is not there, or invent an address.
+            - priority is URGENT when the text conveys haste ("urgente", "lo antes posible", "es
+              para ya", "prioridad alta"), LOW when it explicitly says there is no rush ("sin
+              prisa", "cuando se pueda", "no corre prisa"), and NORMAL otherwise. Do not guess
+              URGENT from a delivery window alone.
+            - timeFrom and timeTo are HH:mm on a 24-hour clock. "antes de las 13:00" gives only
+              timeTo, "despues de las 9" gives only timeFrom, "entre 10 y 12" gives both. Convert
+              12-hour expressions ("5 de la tarde") to 24-hour form.
+            - Put anything else useful (apartment or suite number, phone, gate code, "dejar con el
               portero") in notes, in the original language. Never put the address in notes.
+
+            Every field is required and every value must be a string. When a value is absent from
+            the text, return an empty string for it. Never write the word "null", and never carry a
+            value from one delivery into another.
 
             Extract only what the text actually says. Never fill a field by assumption.
             """;
 
     private final AppProperties properties;
+    private final OutputConfig.Effort effort;
 
     /** Built on first use so the app still starts (and /api/health still answers) without a key. */
     private volatile AnthropicClient client;
 
     public ClaudeOrderParser(AppProperties properties) {
         this.properties = properties;
+        this.effort = resolveEffort(properties.ai().effort());
+    }
+
+    /**
+     * Turns the configured effort level into the wire value the API accepts.
+     *
+     * <p>Two things make this worth doing once at startup rather than inline. The API only accepts
+     * lowercase, and {@code Effort.of} wraps whatever string it is handed without normalizing it,
+     * so a natural-looking {@code effort: LOW} in application.yml is rejected — but only when the
+     * first extraction runs, long after the misconfiguration was introduced. Validating here turns
+     * that into a boot failure with a message that names the accepted values.
+     */
+    private static OutputConfig.Effort resolveEffort(String configured) {
+        String value = configured == null || configured.isBlank()
+                ? "low"
+                : configured.trim().toLowerCase(Locale.ROOT);
+        OutputConfig.Effort resolved = OutputConfig.Effort.of(value);
+        if (!resolved.isValid()) {
+            throw new IllegalArgumentException(
+                    "app.ai.effort must be one of low, medium, high, xhigh, max but was: " + configured);
+        }
+        return resolved;
     }
 
     @Override
@@ -82,7 +114,7 @@ public class ClaudeOrderParser implements OrderParser {
         StructuredOutputConfig<ParsedOrders> outputConfig = StructuredOutputConfig
                 .<ParsedOrders>builder()
                 .format(ParsedOrders.class)
-                .effort(OutputConfig.Effort.of(properties.ai().effort()))
+                .effort(effort)
                 .build();
 
         StructuredMessageCreateParams<ParsedOrders> params = MessageCreateParams.builder()
