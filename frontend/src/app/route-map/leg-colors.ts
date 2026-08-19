@@ -17,8 +17,14 @@
  */
 const RAMP = ['#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b'] as const;
 
-/** The return-to-depot leg is not a delivery, so it stays neutral instead of taking a ramp step. */
-export const RETURN_LEG_COLOR = '#7a7a75';
+/**
+ * The return-to-depot leg is not a delivery, so it stays outside the ramp entirely.
+ *
+ * <p>Black rather than a ramp step because it has no position in the sequence to encode — it is
+ * the drive home. It has to be drawn at full opacity to actually read as black: at the 0.6 the
+ * other legs use, black over the map tiles composites to a mid grey.
+ */
+export const RETURN_LEG_COLOR = '#000000';
 
 /** Colour for leg {@code index} of {@code total}, spread across the full ramp. */
 export function legColor(index: number, total: number): string {

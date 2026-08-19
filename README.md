@@ -198,8 +198,9 @@ and colour carries **progression** rather than identity. Identity lives on two o
 do not degrade: the numbered markers, and a hover tooltip naming each leg with its distance and
 arrival time. Colour is never the only way to tell legs apart.
 
-The return-to-depot leg is deliberately outside the ramp — neutral grey and dashed, because it
-delivers nothing.
+The return-to-depot leg is deliberately outside the ramp — **black and dashed**, because it has no
+position in the sequence to encode: it is the drive home, not a delivery. It is drawn at full
+opacity, since black at the tint the other legs use composites to a mid grey against the tiles.
 
 To run fully offline:
 

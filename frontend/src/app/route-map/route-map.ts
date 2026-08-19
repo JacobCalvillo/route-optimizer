@@ -15,6 +15,7 @@ const FALLBACK_CENTER: L.LatLngExpression = [19.4326, -99.1332];
 
 const LEG_WEIGHT = 5;
 const LEG_WEIGHT_HOVER = 9;
+const RETURN_LEG_WEIGHT = 3;
 
 /**
  * Leaflet map showing the depot, the stops numbered in visit order, and the route itself.
@@ -189,10 +190,15 @@ export class RouteMap {
     const isReturn = index === total - 1;
     const color = isReturn ? RETURN_LEG_COLOR : legColor(index, Math.max(1, total - 1));
 
+    // Full opacity on the return leg so its black reads as black rather than compositing to grey
+    // against the tiles. The dashes and the thinner stroke are what set it apart, not a tint.
+    const weight = isReturn ? RETURN_LEG_WEIGHT : LEG_WEIGHT;
+    const opacity = isReturn ? 1 : 0.85;
+
     const line = L.polyline(points as L.LatLngExpression[], {
       color,
-      weight: isReturn ? 3 : LEG_WEIGHT,
-      opacity: isReturn ? 0.6 : 0.85,
+      weight,
+      opacity,
       dashArray: approximate || isReturn ? '8 8' : undefined,
     });
 
@@ -200,9 +206,7 @@ export class RouteMap {
 
     // Hover is what makes an individual leg identifiable past the five steps the ramp can hold.
     line.on('mouseover', () => line.setStyle({ weight: LEG_WEIGHT_HOVER, opacity: 1 }));
-    line.on('mouseout', () =>
-      line.setStyle({ weight: isReturn ? 3 : LEG_WEIGHT, opacity: isReturn ? 0.6 : 0.85 }),
-    );
+    line.on('mouseout', () => line.setStyle({ weight, opacity }));
 
     line.addTo(overlay);
   }
@@ -233,7 +237,9 @@ export class RouteMap {
       box.innerHTML = `
         <span class="leg-legend-label">Departure</span>
         <span class="leg-legend-ramp" style="background:${rampCss()}"></span>
-        <span class="leg-legend-label">Last stop</span>`;
+        <span class="leg-legend-label">Last stop</span>
+        <span class="leg-legend-return" style="border-color:${RETURN_LEG_COLOR}"></span>
+        <span class="leg-legend-label">Return</span>`;
       if (approximate) {
         box.title = 'Dashed: straight-line estimate, no road data';
       }
