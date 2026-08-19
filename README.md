@@ -77,7 +77,8 @@ npm install
 npm start                                # http://localhost:4200
 ```
 
-`proxy.conf.json` forwards `/api` to the backend, so the dev server needs no CORS handling.
+`proxy.conf.js` forwards `/api` to the backend (reading `BACKEND_URL` from `frontend/.env`), so the
+dev server needs no CORS handling.
 
 ---
 
