@@ -49,8 +49,10 @@ app:
     min-interval-millis: 1100
 
   routing:
-    # haversine | osrm
-    matrix: haversine
+    # osrm  -> real road distances and a route line that follows streets
+    # haversine -> offline approximation, straight segments drawn dashed
+    # OSRM failures fall back to haversine automatically and say so in the response.
+    matrix: osrm
     # Multiplier applied to straight-line distance to approximate road distance.
     detour-factor: 1.3
     average-speed-kmh: 30
@@ -59,6 +61,12 @@ app:
     late-penalty-per-minute: 500
     priority-penalty-per-position: 200
     max-iterations: 1000
+    # A stop further than this from the depot is warned about as a probable geocoding error.
+    # It is never excluded from the route. Set to 0 to disable the check.
+    max-stop-distance-km: 150
     osrm:
       base-url: https://router.project-osrm.org
       timeout-seconds: 10
+      # Detail of the drawn route line: full | simplified.
+      # Point count grows with route length; switch to simplified if payload size matters.
+      overview: full

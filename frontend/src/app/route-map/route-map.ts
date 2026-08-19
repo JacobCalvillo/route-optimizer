@@ -138,12 +138,30 @@ export class RouteMap {
         .addTo(overlay);
     });
 
-    // Close the loop back to the depot, matching how the optimizer scores the tour.
-    const line: L.LatLngExpression[] = [
+    if (route.geometry?.length) {
+      // Road geometry from the routing provider: the line follows actual streets.
+      L.polyline(route.geometry as L.LatLngExpression[], {
+        color: '#2563eb',
+        weight: 5,
+        opacity: 0.8,
+      }).addTo(overlay);
+      return;
+    }
+
+    // No road data. Draw the tour as dashed straight segments so it reads as the approximation it
+    // is, rather than as a route that happens to ignore every street.
+    const straight: L.LatLngExpression[] = [
       [route.depotLat, route.depotLon],
       ...route.stops.map((stop) => [stop.lat, stop.lon] as L.LatLngExpression),
       [route.depotLat, route.depotLon],
     ];
-    L.polyline(line, { color: '#2563eb', weight: 4, opacity: 0.75 }).addTo(overlay);
+    L.polyline(straight, {
+      color: '#2563eb',
+      weight: 3,
+      opacity: 0.65,
+      dashArray: '8 8',
+    })
+      .bindTooltip('Straight-line approximation — no road data for this route')
+      .addTo(overlay);
   }
 }

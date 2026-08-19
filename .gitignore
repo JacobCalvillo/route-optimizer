@@ -6,8 +6,9 @@ frontend/.angular/
 # Dependencies
 frontend/node_modules/
 
-# Local database (H2 file store, recreated on startup)
-backend/data/
+# Local database (H2 file store, recreated on startup). The path is relative to the
+# directory the backend was launched from, so it can land at either level.
+data/
 
 # IDE
 .idea/

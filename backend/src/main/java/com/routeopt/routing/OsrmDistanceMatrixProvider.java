@@ -23,7 +23,7 @@ import org.springframework.web.client.RestClient;
  * the request: a demo that silently degrades beats a demo that 502s.
  */
 @Component
-@ConditionalOnProperty(name = "app.routing.matrix", havingValue = "osrm")
+@ConditionalOnProperty(name = "app.routing.matrix", havingValue = "osrm", matchIfMissing = true)
 public class OsrmDistanceMatrixProvider implements DistanceMatrixProvider {
 
     private static final Logger log = LoggerFactory.getLogger(OsrmDistanceMatrixProvider.class);

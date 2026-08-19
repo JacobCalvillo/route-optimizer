@@ -36,10 +36,17 @@ public record AppProperties(Cors cors, Ai ai, Geocoding geocoding, Routing routi
             @DefaultValue("500") double latePenaltyPerMinute,
             @DefaultValue("200") double priorityPenaltyPerPosition,
             @DefaultValue("1000") int maxIterations,
+            /*
+             * A stop further than this from the depot is almost always a geocoding mistake rather
+             * than a real delivery. Warned about, never excluded. Zero disables the check.
+             */
+            @DefaultValue("150") double maxStopDistanceKm,
             Osrm osrm) {
 
         public record Osrm(
                 @DefaultValue("https://router.project-osrm.org") String baseUrl,
-                @DefaultValue("10") int timeoutSeconds) {}
+                @DefaultValue("10") int timeoutSeconds,
+                /* Geometry detail: "full" or "simplified". Point count scales with route length. */
+                @DefaultValue("full") String overview) {}
     }
 }

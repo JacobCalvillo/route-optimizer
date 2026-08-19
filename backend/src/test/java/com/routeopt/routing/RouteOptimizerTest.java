@@ -124,6 +124,39 @@ class RouteOptimizerTest {
     }
 
     @Test
+    void warnsWhenAStopIsFarEnoughFromTheDepotToLookLikeAGeocodingError() {
+        AppProperties properties = TestFixtures.properties(500, 200);
+        List<RouteStop> stops = List.of(
+                TestFixtures.stop("nearby", 19.4400, -99.1400),
+                // What "Paseo de la Reforma 222" with no city actually resolved to: Playa del
+                // Carmen, 1,300 km from a Mexico City depot.
+                TestFixtures.stop("wrong-state", 20.6704, -87.0904));
+
+        OptimizationResult result =
+                optimizerWith(properties).optimize(TestFixtures.DEPOT, "depot", stops, DEPARTURE);
+
+        assertThat(result.warnings()).anySatisfy(warning -> assertThat(warning)
+                .contains("wrong-state")
+                .contains("from the depot"));
+        // Warned about, never excluded: the operator decides.
+        assertThat(result.evaluation().schedule()).hasSize(2);
+    }
+
+    @Test
+    void doesNotWarnAboutStopsWithinTheNormalServiceArea() {
+        AppProperties properties = TestFixtures.properties(500, 200);
+        List<RouteStop> stops = List.of(
+                TestFixtures.stop("a", 19.4400, -99.1400),
+                TestFixtures.stop("b", 19.2826, -99.6557));
+
+        OptimizationResult result =
+                optimizerWith(properties).optimize(TestFixtures.DEPOT, "depot", stops, DEPARTURE);
+
+        assertThat(result.warnings()).noneSatisfy(warning ->
+                assertThat(warning).contains("from the depot"));
+    }
+
+    @Test
     void rejectsAnEmptyStopList() {
         AppProperties properties = TestFixtures.properties(500, 200);
         assertThatThrownBy(() ->

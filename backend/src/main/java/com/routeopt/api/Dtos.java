@@ -1,5 +1,6 @@
 package com.routeopt.api;
 
+import com.routeopt.domain.Coordinate;
 import com.routeopt.domain.DeliveryOrder;
 import com.routeopt.domain.Priority;
 import com.routeopt.routing.OptimizationResult;
@@ -146,9 +147,17 @@ public final class Dtos {
             int lateStopCount,
             long totalLateMinutes,
             String matrixProvider,
+            /*
+             * The road polyline as [lat, lon] pairs, depot to depot. Null when no road data was
+             * available, which tells the client to draw straight segments and label them as an
+             * approximation rather than passing them off as a real route.
+             */
+            List<double[]> geometry,
+            String geometrySource,
             List<String> warnings) {
 
-        public static OptimizedRouteResponse from(OptimizationResult result, LocalTime departureTime) {
+        public static OptimizedRouteResponse from(
+                OptimizationResult result, LocalTime departureTime, List<Coordinate> roadGeometry) {
             return new OptimizedRouteResponse(
                     result.depot().lat(),
                     result.depot().lon(),
@@ -163,10 +172,22 @@ public final class Dtos {
                     result.evaluation().lateStopCount(),
                     result.evaluation().totalLateMinutes(),
                     result.matrixProvider(),
+                    roadGeometry == null || roadGeometry.isEmpty()
+                            ? null
+                            : roadGeometry.stream()
+                                    .map(point -> new double[] {point.lat(), point.lon()})
+                                    .toList(),
+                    roadGeometry == null || roadGeometry.isEmpty() ? null : "osrm",
                     result.warnings());
         }
     }
 
     public record HealthResponse(
-            String status, boolean aiParserAvailable, String model, String matrixProvider, long orderCount) {}
+            String status,
+            boolean aiParserAvailable,
+            String model,
+            String matrixProvider,
+            long orderCount,
+            /* Resolved location of the H2 file, which depends on the process working directory. */
+            String databaseDirectory) {}
 }

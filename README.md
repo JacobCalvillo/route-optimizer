@@ -20,7 +20,7 @@ The model is called exactly once per batch of text, and never again.
 | Backend | Java 25, Spring Boot 4.1, Spring Data JPA, H2 (file-backed) |
 | AI | `com.anthropic:anthropic-java`, model `claude-opus-5`, structured outputs |
 | Geocoding | OpenStreetMap Nominatim, with a database-backed cache |
-| Distances | Haversine (default) or OSRM road routing, selected by configuration |
+| Distances | OSRM road routing (default), or an offline Haversine approximation |
 | Frontend | Angular 22 (standalone components, signals), Leaflet |
 
 ---
@@ -61,8 +61,13 @@ cd backend
 .\mvnw spring-boot:run                   # http://localhost:8080
 ```
 
-The H2 database is a file under `backend/data/`, so orders and the geocoding cache survive
-restarts. Delete that directory to start clean.
+The H2 database is a file under `data/`, **relative to the directory you launched from** — running
+from the repository root and from `backend/` produces two different databases. `/api/health` reports
+the resolved path so this is never a mystery. Delete that directory to start clean.
+
+> Note: the datasource uses `AUTO_SERVER=TRUE`, so a still-running instance keeps the database open
+> in server mode. Deleting the files while one is alive appears to work and changes nothing — stop
+> every instance first.
 
 ### Frontend
 
@@ -155,23 +160,46 @@ Defaults live in `backend/src/main/resources/application.yml`; override any of t
 | `app.ai.max-tokens` | `8000` | Covers thinking **and** the JSON answer — don't drop below ~4000 |
 | `app.geocoding.user-agent` | — | **Change this.** Nominatim's policy requires an identifying value |
 | `app.geocoding.min-interval-millis` | `1100` | Enforces Nominatim's one-request-per-second limit |
-| `app.routing.matrix` | `haversine` | Switch to `osrm` for real road distances |
+| `app.routing.matrix` | `osrm` | `haversine` for an offline approximation with no network |
+| `app.routing.osrm.overview` | `full` | Detail of the drawn route line; `simplified` for a lighter payload |
+| `app.routing.max-stop-distance-km` | `150` | Warns when a stop is this far from the depot (probable geocoding error) |
 | `app.routing.detour-factor` | `1.3` | Scales straight-line distance toward road distance |
 | `app.routing.average-speed-kmh` | `30` | Used for Haversine durations only; OSRM supplies its own |
 | `app.routing.late-penalty-per-minute` | `500` | Metres of cost per minute past a deadline |
 | `app.routing.priority-penalty-per-position` | `200` | Metres of cost per weighted position |
 
-Switching to real road routing is one line:
+### Road routing and the drawn line
+
+By default the backend asks OSRM for two different things: `/table` for the distance matrix the
+optimizer needs *before* it knows the order, and `/route` for the geometry of the tour it chose.
+That second call is what makes the line on the map follow streets — without it the map would
+contradict its own summary, showing a straight line next to a road distance.
+
+The response carries `geometry` (the road polyline) and `geometrySource`. When no road data is
+available both are null, and the map draws **dashed** straight segments and says so, rather than
+passing an approximation off as a real route.
+
+To run fully offline:
 
 ```yaml
 app:
   routing:
-    matrix: osrm
+    matrix: haversine
 ```
 
-`/api/health` reports which provider is live. If the OSRM server is unreachable the provider falls
-back to Haversine and says so in the response's `matrixProvider` field, rather than failing the
-request.
+`/api/health` reports which provider is live. If OSRM is unreachable the matrix falls back to
+Haversine and says so in the response's `matrixProvider` field, and the geometry is simply omitted
+— the request never fails because of it.
+
+### A stop in the wrong state
+
+An ambiguous address resolves to a real place that happens to be somewhere else entirely. In
+testing, `Paseo de la Reforma 222` with no city attached geocoded to **Playa del Carmen**, turning a
+70 km city round trip into a 3,200 km one. The route was arithmetically perfect and useless.
+
+`app.routing.max-stop-distance-km` catches this: any stop further than that from the depot produces
+a warning naming it and the distance. It is a warning and never an exclusion, because the threshold
+is a heuristic and long routes are legitimate — the operator decides, but only if told.
 
 ---
 

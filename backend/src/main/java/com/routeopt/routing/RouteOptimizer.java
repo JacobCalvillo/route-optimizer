@@ -82,6 +82,8 @@ public class RouteOptimizer {
                                         entry.lateMinutes(),
                                         entry.stop().timeWindow().to())));
 
+        warnings.addAll(implausiblyDistantStops(depot, stops));
+
         log.info(
                 "Optimized {} stops with {}: {} m -> {} m ({}% better)",
                 stops.size(),
@@ -99,6 +101,36 @@ public class RouteOptimizer {
                 initial.cost(),
                 matrix.provider(),
                 List.copyOf(warnings));
+    }
+
+    /**
+     * Flags stops that are far enough from the depot to look like a geocoding mistake.
+     *
+     * <p>An ambiguous address resolves to a real place that happens to be in the wrong state: in
+     * testing, "Paseo de la Reforma 222" with no city attached resolved to Playa del Carmen and
+     * turned a 70 km city round trip into a 3,200 km one. The route was arithmetically correct and
+     * completely useless, and nothing in the response said why.
+     *
+     * <p>This is a warning rather than an exclusion because the threshold is a heuristic and long
+     * routes are legitimate — the operator decides, but only if the system tells them.
+     */
+    private List<String> implausiblyDistantStops(Coordinate depot, List<RouteStop> stops) {
+        double limitMeters = properties.routing().maxStopDistanceKm() * 1000.0;
+        if (limitMeters <= 0) {
+            return List.of();
+        }
+        return stops.stream()
+                .filter(stop ->
+                        HaversineDistanceMatrixProvider.haversineMeters(depot, stop.coordinate())
+                                > limitMeters)
+                .map(stop -> ("%s is %.0f km from the depot in a straight line, which usually means"
+                                + " the address was geocoded to the wrong place. Check it before"
+                                + " dispatching.")
+                        .formatted(
+                                stop.label(),
+                                HaversineDistanceMatrixProvider.haversineMeters(depot, stop.coordinate())
+                                        / 1000.0))
+                .toList();
     }
 
     /** Exposed so tests and the health endpoint can see which matrix implementation is wired in. */

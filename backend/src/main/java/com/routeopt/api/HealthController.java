@@ -37,6 +37,19 @@ public class HealthController {
                 parser.isAvailable(),
                 properties.ai().model(),
                 optimizer.matrixProviderName(),
-                repository.count());
+                repository.count(),
+                databaseLocation());
+    }
+
+    /**
+     * Where the H2 file actually landed.
+     *
+     * <p>The datasource URL is a relative path, so the database lives next to whatever directory
+     * the process was launched from. Launching from the repository root and from {@code backend/}
+     * silently produces two different databases; reporting the resolved path here turns a confusing
+     * "where did my orders go" into a glance at /api/health.
+     */
+    private String databaseLocation() {
+        return java.nio.file.Path.of("data").toAbsolutePath().normalize().toString();
     }
 }

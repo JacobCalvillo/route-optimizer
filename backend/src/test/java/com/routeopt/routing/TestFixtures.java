@@ -28,7 +28,8 @@ final class TestFixtures {
                         latePenalty,
                         priorityPenalty,
                         1000,
-                        new AppProperties.Routing.Osrm("http://localhost", 10)));
+                        150,
+                        new AppProperties.Routing.Osrm("http://localhost", 10, "full")));
     }
 
     static DistanceMatrixProvider haversineProvider(AppProperties properties) {

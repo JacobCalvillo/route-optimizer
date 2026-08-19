@@ -23,8 +23,8 @@ class ClaudeOrderParserTest {
                 new AppProperties.Ai(apiKey, "claude-opus-5", 8000, effort),
                 new AppProperties.Geocoding("http://localhost", "test", "mx", 0),
                 new AppProperties.Routing(
-                        "haversine", 1.3, 30, 5, 500, 200, 1000,
-                        new AppProperties.Routing.Osrm("http://localhost", 10)));
+                        "haversine", 1.3, 30, 5, 500, 200, 1000, 150,
+                        new AppProperties.Routing.Osrm("http://localhost", 10, "full")));
     }
 
     @ParameterizedTest

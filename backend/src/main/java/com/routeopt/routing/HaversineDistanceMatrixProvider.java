@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * design; switch {@code app.routing.matrix} to {@code osrm} when real road data matters.
  */
 @Component
-@ConditionalOnProperty(name = "app.routing.matrix", havingValue = "haversine", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.routing.matrix", havingValue = "haversine")
 public class HaversineDistanceMatrixProvider implements DistanceMatrixProvider {
 
     private static final double EARTH_RADIUS_METERS = 6_371_000.0;
