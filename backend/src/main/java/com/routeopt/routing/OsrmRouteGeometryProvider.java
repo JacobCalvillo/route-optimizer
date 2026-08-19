@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.routeopt.config.AppProperties;
 import com.routeopt.domain.Coordinate;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -17,11 +18,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 /**
- * Road geometry from an OSRM server's {@code /route} service.
+ * Road geometry from an OSRM server's {@code /route} service, split per leg.
  *
  * <p>This is what makes the drawn line follow streets instead of cutting across blocks. Without it
  * the map contradicts its own summary: the distance would be a road distance while the polyline
  * showed the straight-line path.
+ *
+ * <p>The request asks for {@code steps} and skips the overview polyline entirely. OSRM only fills
+ * in per-leg geometry when steps are requested, and the overview would just be the same line again
+ * — the client can concatenate the legs when it wants the whole thing.
  *
  * <p>Failure is not an error. If OSRM is unreachable this returns empty and the client falls back
  * to straight segments, which is the same degradation the distance matrix already performs.
@@ -49,7 +54,7 @@ public class OsrmRouteGeometryProvider implements RouteGeometryProvider {
     }
 
     @Override
-    public Optional<List<Coordinate>> geometryFor(List<Coordinate> orderedPoints) {
+    public Optional<List<List<Coordinate>>> legsFor(List<Coordinate> orderedPoints) {
         if (orderedPoints.size() < 2) {
             return Optional.empty();
         }
@@ -63,10 +68,7 @@ public class OsrmRouteGeometryProvider implements RouteGeometryProvider {
                     .get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/route/v1/driving/{coordinates}")
-                            // Point count scales with route length: "full" is a few thousand
-                            // points for a city day and tens of thousands for an intercity one.
-                            // "simplified" caps the payload at the cost of visibly cutting corners
-                            // when zoomed in.
+                            .queryParam("steps", "true")
                             .queryParam("overview", properties.routing().osrm().overview())
                             .queryParam("geometries", "geojson")
                             .build(path))
@@ -76,19 +78,42 @@ public class OsrmRouteGeometryProvider implements RouteGeometryProvider {
             if (response == null
                     || !"Ok".equalsIgnoreCase(response.code())
                     || response.routes() == null
-                    || response.routes().isEmpty()) {
+                    || response.routes().isEmpty()
+                    || response.routes().getFirst().legs() == null) {
                 log.warn("OSRM returned no route geometry; the client will draw straight segments");
                 return Optional.empty();
             }
 
-            // GeoJSON is [longitude, latitude]; every mapping library expects the opposite.
-            List<Coordinate> line = response.routes().getFirst().geometry().coordinates().stream()
-                    .filter(pair -> pair.size() >= 2)
-                    .map(pair -> new Coordinate(pair.get(1), pair.get(0)))
-                    .toList();
+            List<List<Coordinate>> legs = new ArrayList<>();
+            for (Leg leg : response.routes().getFirst().legs()) {
+                List<Coordinate> line = new ArrayList<>();
+                if (leg.steps() != null) {
+                    for (Step step : leg.steps()) {
+                        if (step.geometry() == null || step.geometry().coordinates() == null) {
+                            continue;
+                        }
+                        for (List<Double> pair : step.geometry().coordinates()) {
+                            if (pair.size() < 2) {
+                                continue;
+                            }
+                            // GeoJSON is [longitude, latitude]; mapping libraries expect the reverse.
+                            Coordinate point = new Coordinate(pair.get(1), pair.get(0));
+                            // Consecutive steps repeat the shared vertex; drop the duplicate.
+                            if (line.isEmpty() || !line.getLast().equals(point)) {
+                                line.add(point);
+                            }
+                        }
+                    }
+                }
+                legs.add(List.copyOf(line));
+            }
 
-            log.debug("OSRM returned road geometry with {} points", line.size());
-            return line.isEmpty() ? Optional.empty() : Optional.of(line);
+            if (legs.isEmpty() || legs.stream().allMatch(List::isEmpty)) {
+                return Optional.empty();
+            }
+            log.debug("OSRM returned {} leg(s), {} points total",
+                    legs.size(), legs.stream().mapToInt(List::size).sum());
+            return Optional.of(List.copyOf(legs));
         } catch (RuntimeException ex) {
             log.warn("OSRM geometry request failed ({}); the client will draw straight segments",
                     ex.getMessage());
@@ -102,12 +127,17 @@ public class OsrmRouteGeometryProvider implements RouteGeometryProvider {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record RouteResponse(String code, List<Route> routes) {
+    record RouteResponse(String code, List<Route> routes) {}
 
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        record Route(Geometry geometry) {}
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record Route(List<Leg> legs) {}
 
-        @JsonIgnoreProperties(ignoreUnknown = true)
-        record Geometry(List<List<Double>> coordinates) {}
-    }
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record Leg(List<Step> steps) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record Step(Geometry geometry) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record Geometry(List<List<Double>> coordinates) {}
 }

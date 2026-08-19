@@ -171,3 +171,28 @@ code {
   background: var(--muted);
   border-width: 2px;
 }
+
+/*
+ * Map legend for the leg colour ramp. Global for the same reason as the pins: Leaflet builds its
+ * controls outside the component template, so Angular's style encapsulation never tags them.
+ */
+.leg-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 88%);
+  border: 1px solid rgb(0 0 0 / 12%);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 20%);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.7rem;
+  color: #1b1f24;
+  white-space: nowrap;
+}
+
+.leg-legend-ramp {
+  width: 5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}

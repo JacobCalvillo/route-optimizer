@@ -83,8 +83,11 @@ export interface OptimizedRoute {
   lateStopCount: number;
   totalLateMinutes: number;
   matrixProvider: string;
-  /** Road polyline as [lat, lon] pairs, depot to depot. Null when no road data was available. */
-  geometry: [number, number][] | null;
+  /**
+   * One road polyline per leg, each as [lat, lon] pairs. Leg i runs to stop i+1; the last one
+   * returns to the depot. Null when no road data was available.
+   */
+  legs: [number, number][][] | null;
   geometrySource: string | null;
   warnings: string[];
 }

@@ -10,16 +10,16 @@ import org.springframework.stereotype.Component;
  * The provider used when distances are Haversine approximations.
  *
  * <p>It deliberately returns nothing rather than echoing the stop coordinates back. Handing the
- * client a "geometry" that is just the stops would let the UI draw a solid line indistinguishable
- * from a real route. Returning empty makes the absence explicit, so the map can draw a dashed line
- * and label it as an approximation — which is what it is when distances come from Haversine.
+ * client "legs" that are just the stops would let the UI draw a solid line indistinguishable from a
+ * real route. Returning empty makes the absence explicit, so the map can draw dashed segments and
+ * label them as an approximation — which is what they are when distances come from Haversine.
  */
 @Component
 @ConditionalOnProperty(name = "app.routing.matrix", havingValue = "haversine")
 public class StraightLineGeometryProvider implements RouteGeometryProvider {
 
     @Override
-    public Optional<List<Coordinate>> geometryFor(List<Coordinate> orderedPoints) {
+    public Optional<List<List<Coordinate>>> legsFor(List<Coordinate> orderedPoints) {
         return Optional.empty();
     }
 

@@ -65,10 +65,10 @@ public class RouteController {
 
         // Geometry is asked for only after the order is known, and only for display. A failure
         // here degrades the drawing, never the route.
-        List<Coordinate> geometry =
-                geometryProvider.geometryFor(tourCoordinates(depot, result)).orElse(null);
+        List<List<Coordinate>> legs =
+                geometryProvider.legsFor(tourCoordinates(depot, result)).orElse(null);
 
-        return OptimizedRouteResponse.from(result, request.departureTime(), geometry);
+        return OptimizedRouteResponse.from(result, request.departureTime(), legs);
     }
 
     /** The full closed tour the optimizer chose: depot, every stop in order, then back to the depot. */

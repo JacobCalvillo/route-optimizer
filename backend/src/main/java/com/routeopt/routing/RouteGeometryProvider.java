@@ -18,10 +18,17 @@ import java.util.Optional;
 public interface RouteGeometryProvider {
 
     /**
+     * Splits the tour into one polyline per leg rather than returning a single line.
+     *
+     * <p>A leg is the drive between two consecutive points, so the client can style each one
+     * independently — colouring them by position is what lets a dispatcher read the direction of
+     * travel off the map instead of chasing marker numbers.
+     *
      * @param orderedPoints the full tour in visit order, depot first and depot again last
-     * @return the road polyline as WGS84 points, or empty when no road data is available
+     * @return one polyline per leg ({@code orderedPoints.size() - 1} of them), or empty when no
+     *     road data is available
      */
-    Optional<List<Coordinate>> geometryFor(List<Coordinate> orderedPoints);
+    Optional<List<List<Coordinate>>> legsFor(List<Coordinate> orderedPoints);
 
     /** Short identifier surfaced in the API response so the client knows what it is drawing. */
     String name();

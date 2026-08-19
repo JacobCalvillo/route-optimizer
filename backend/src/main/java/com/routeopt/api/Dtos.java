@@ -148,16 +148,20 @@ public final class Dtos {
             long totalLateMinutes,
             String matrixProvider,
             /*
-             * The road polyline as [lat, lon] pairs, depot to depot. Null when no road data was
-             * available, which tells the client to draw straight segments and label them as an
-             * approximation rather than passing them off as a real route.
+             * One road polyline per leg, each as [lat, lon] pairs. Leg i runs from stop i to stop
+             * i+1, and the last one returns to the depot. Split per leg so the client can style
+             * each independently. Null when no road data was available, which tells the client to
+             * draw straight segments and label them as an approximation rather than passing them
+             * off as a real route.
              */
-            List<double[]> geometry,
+            List<List<double[]>> legs,
             String geometrySource,
             List<String> warnings) {
 
         public static OptimizedRouteResponse from(
-                OptimizationResult result, LocalTime departureTime, List<Coordinate> roadGeometry) {
+                OptimizationResult result,
+                LocalTime departureTime,
+                List<List<Coordinate>> roadLegs) {
             return new OptimizedRouteResponse(
                     result.depot().lat(),
                     result.depot().lon(),
@@ -172,12 +176,14 @@ public final class Dtos {
                     result.evaluation().lateStopCount(),
                     result.evaluation().totalLateMinutes(),
                     result.matrixProvider(),
-                    roadGeometry == null || roadGeometry.isEmpty()
+                    roadLegs == null || roadLegs.isEmpty()
                             ? null
-                            : roadGeometry.stream()
-                                    .map(point -> new double[] {point.lat(), point.lon()})
+                            : roadLegs.stream()
+                                    .map(leg -> leg.stream()
+                                            .map(point -> new double[] {point.lat(), point.lon()})
+                                            .toList())
                                     .toList(),
-                    roadGeometry == null || roadGeometry.isEmpty() ? null : "osrm",
+                    roadLegs == null || roadLegs.isEmpty() ? null : "osrm",
                     result.warnings());
         }
     }

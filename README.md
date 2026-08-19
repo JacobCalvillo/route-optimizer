@@ -175,9 +175,30 @@ optimizer needs *before* it knows the order, and `/route` for the geometry of th
 That second call is what makes the line on the map follow streets — without it the map would
 contradict its own summary, showing a straight line next to a road distance.
 
-The response carries `geometry` (the road polyline) and `geometrySource`. When no road data is
-available both are null, and the map draws **dashed** straight segments and says so, rather than
-passing an approximation off as a real route.
+The response carries `legs` — **one polyline per leg** rather than a single line — plus
+`geometrySource`. Splitting per leg is what lets the map style each segment independently. When no
+road data is available both are null, and the map draws **dashed** straight segments and says so,
+rather than passing an approximation off as a real route.
+
+### Why the legs are one hue and not a rainbow
+
+Legs are an *ordinal* variable: they have an order and a direction. So the map encodes them as a
+single blue hue running light to dark, which makes the direction of travel readable at a glance.
+A set of unrelated colours would read as "unrelated categories" and destroy exactly that.
+
+The ramp holds **five** visually distinct steps and no more. That is measured, not guessed: on the
+OpenStreetMap tile background, nine evenly spaced steps of the same hue sit 0.047 apart in
+lightness, well under the 0.06 needed to tell neighbours apart, and the lightest step of the source
+ramp only reaches 1.84:1 contrast against the tiles — below the 2:1 floor. The shipped ramp
+(`#6da7ec → #0d366b`) clears every check.
+
+Past five legs the ramp is interpolated, so neighbouring legs stop being reliably distinguishable
+and colour carries **progression** rather than identity. Identity lives on two other channels that
+do not degrade: the numbered markers, and a hover tooltip naming each leg with its distance and
+arrival time. Colour is never the only way to tell legs apart.
+
+The return-to-depot leg is deliberately outside the ramp — neutral grey and dashed, because it
+delivers nothing.
 
 To run fully offline:
 
