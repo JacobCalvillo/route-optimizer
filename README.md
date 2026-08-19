@@ -18,7 +18,7 @@ The model is called exactly once per batch of text, and never again.
 | Layer | Choice |
 |---|---|
 | Backend | Java 25, Spring Boot 4.1, Spring Data JPA, H2 (file-backed) |
-| AI | `com.anthropic:anthropic-java`, model `claude-opus-5`, structured outputs |
+| AI | `com.anthropic:anthropic-java`, model `claude-sonnet-5`, structured outputs |
 | Geocoding | OpenStreetMap Nominatim, with a database-backed cache |
 | Distances | OSRM road routing (default), or an offline Haversine approximation |
 | Frontend | Angular 22 (standalone components, signals), Leaflet |
@@ -157,7 +157,7 @@ Defaults live in `backend/src/main/resources/application.yml`; override any of t
 | Property | Default | What it does |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | — | API key; blank disables free-form parsing only |
-| `app.ai.model` | `claude-opus-5` | Model used for extraction |
+| `app.ai.model` | `claude-sonnet-5` | Model used for extraction; swap freely, it is configuration |
 | `app.ai.max-tokens` | `8000` | Covers thinking **and** the JSON answer — don't drop below ~4000 |
 | `app.geocoding.user-agent` | — | **Change this.** Nominatim's policy requires an identifying value |
 | `app.geocoding.min-interval-millis` | `1100` | Enforces Nominatim's one-request-per-second limit |
