@@ -24,25 +24,55 @@ export class OrderList {
   readonly error = signal<string | null>(null);
 
   readonly addressDraft = signal<AddressInput>({ ...EMPTY_ADDRESS });
+  /** Set while editing an order that only ever had a single-string address. */
+  readonly editingLegacy = signal(false);
 
   startEdit(order: Order): void {
     this.editingId.set(order.id);
-    // Seed from the stored parts. A legacy order has none, so the form starts empty and whatever
-    // is typed becomes its first structured address.
-    this.addressDraft.set({ ...EMPTY_ADDRESS, ...(order.address ?? {}) });
+    this.addressDraft.set(this.seedAddress(order));
     this.draft.set({
       priority: order.priority,
       timeFrom: order.timeFrom,
       timeTo: order.timeTo,
+      serviceMinutes: order.serviceMinutes,
       customerName: order.customerName,
       phone: order.phone,
       notes: order.notes,
     });
   }
 
+  /**
+   * Fills the form from whatever the order actually has.
+   *
+   * <p>An order created before the address was split — or through free-form manual entry — has no
+   * parts at all, only a single string. Opening a blank form for it loses the one piece of
+   * information that exists, so the string is put in the street box: nothing is thrown away, and
+   * the dispatcher can move the pieces into the right boxes from there.
+   *
+   * <p>Every field is coerced to a string. Binding {@code null} into a text input leaves it empty,
+   * which looks the same as "not loaded" and is exactly the confusion this method exists to avoid.
+   */
+  private seedAddress(order: Order): AddressInput {
+    const parts = order.address ?? {};
+    const hasParts = !!(parts.street || parts.city || parts.postalCode || parts.neighborhood);
+    this.editingLegacy.set(!hasParts && !!order.rawAddress);
+
+    return {
+      street: (hasParts ? parts.street : order.rawAddress) ?? '',
+      exteriorNumber: parts.exteriorNumber ?? '',
+      interiorNumber: parts.interiorNumber ?? '',
+      neighborhood: parts.neighborhood ?? '',
+      postalCode: parts.postalCode ?? '',
+      city: parts.city ?? '',
+      state: parts.state ?? '',
+    };
+  }
+
   cancelEdit(): void {
     this.editingId.set(null);
+    this.editingLegacy.set(false);
     this.draft.set({});
+    this.addressDraft.set({ ...EMPTY_ADDRESS });
   }
 
   patchDraft(changes: OrderUpdate): void {

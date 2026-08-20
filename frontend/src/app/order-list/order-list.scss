@@ -101,3 +101,13 @@
 .edit-address {
   grid-column: 1 / -1;
 }
+
+.legacy-note {
+  margin: 0 0 0.45rem;
+  padding: 0.4rem 0.55rem;
+  border-left: 3px solid var(--urgent);
+  border-radius: 0 4px 4px 0;
+  background: var(--surface);
+  font-size: 0.78rem;
+  color: var(--muted);
+}

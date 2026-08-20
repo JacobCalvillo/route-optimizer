@@ -25,6 +25,13 @@
         @if (editingId() === order.id) {
           <div class="edit">
             <div class="edit-address">
+              @if (editingLegacy()) {
+                <p class="legacy-note">
+                  This order was saved as one line, so its address is in the street box. Split it
+                  across the fields — the city and state are what stop it resolving to the wrong
+                  part of the country.
+                </p>
+              }
               <app-address-form [(address)]="addressDraft" />
             </div>
             <label>
