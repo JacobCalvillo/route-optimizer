@@ -49,14 +49,33 @@ public class ShiftPlanner {
             throw new IllegalStateException("No shifts configured; see app.shifts in application.yml");
         }
 
-        List<Integer> remaining = new ArrayList<>();
-        for (int index : sequence) {
-            remaining.add(index);
-        }
-
         LocalTime dayStart = shifts.getFirst().start();
         List<ShiftPlan> plans = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+        List<Integer> impossible = new ArrayList<>();
+
+        // Set aside stops that cannot fit a shift even on their own, before packing anything.
+        // Cutting the tour is contiguous, so a single unreachable stop sitting at the front of the
+        // remainder would block an entire shift while everything behind it waited - which is
+        // exactly what happened with a Mexico City depot and a delivery in Acapulco.
+        double longestBudget = shifts.stream()
+                .mapToDouble(shift -> budgetHours(shift, dayStart))
+                .max()
+                .orElse(0);
+
+        List<Integer> remaining = new ArrayList<>();
+        for (int index : sequence) {
+            if (soloHours(index, stops, matrix, dayStart) > longestBudget) {
+                impossible.add(index);
+            } else {
+                remaining.add(index);
+            }
+        }
+        if (!impossible.isEmpty()) {
+            warnings.add(("%d stop(s) need longer than a full shift on their own, so no shift can"
+                            + " serve them. They are unscheduled rather than blocking one.")
+                    .formatted(impossible.size()));
+        }
 
         for (Shift shift : shifts) {
             if (remaining.isEmpty()) {
@@ -92,7 +111,9 @@ public class ShiftPlanner {
             remaining.subList(0, take).clear();
         }
 
-        List<RouteStop> unscheduled = remaining.stream().map(stops::get).toList();
+        List<Integer> leftOver = new ArrayList<>(impossible);
+        leftOver.addAll(remaining);
+        List<RouteStop> unscheduled = leftOver.stream().map(stops::get).toList();
         if (!unscheduled.isEmpty()) {
             warnings.add("%d stop(s) did not fit in the configured shifts and are not scheduled."
                     .formatted(unscheduled.size()));
@@ -108,6 +129,13 @@ public class ShiftPlanner {
         double untilLimit = properties.routing().maxOperationalHours()
                 - (minutesBetween(dayStart, shift.start()) / 60.0);
         return Math.min(shift.maxHours(), untilLimit);
+    }
+
+    /** Hours to serve one stop alone: out, unload, and back. */
+    private double soloHours(
+            int index, List<RouteStop> stops, DistanceMatrix matrix, LocalTime start) {
+        return evaluator.evaluate(new int[] {index}, stops, matrix, start).totalDurationSeconds()
+                / 3600.0;
     }
 
     /** How many leading stops fit in the budget, counting the drive back to the depot. */

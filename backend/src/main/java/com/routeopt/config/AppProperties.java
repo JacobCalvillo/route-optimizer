@@ -54,10 +54,11 @@ public record AppProperties(
              */
             @DefaultValue("150") double maxStopDistanceKm,
             /*
-             * Wall-clock ceiling from the first shift's start. A guardrail above the shifts
-             * themselves: no plan may stretch past this, however many shifts are configured.
+             * The operating window, as hours from the first shift's start. A ceiling above the
+             * shifts themselves: no plan may stretch past it, however many shifts are configured.
+             * The default 14 is 06:00 to 20:00.
              */
-            @DefaultValue("18") double maxOperationalHours,
+            @DefaultValue("14") double maxOperationalHours,
             Osrm osrm) {
 
         public record Osrm(

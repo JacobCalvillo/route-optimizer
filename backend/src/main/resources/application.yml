@@ -46,7 +46,7 @@ app:
 
   # Driver shifts, in the order they are filled. They run in parallel, each starting from the
   # depot at its own time, so the overlap is deliberate: the afternoon driver is already out
-  # before the morning one is due back.
+  # before the morning one is due back. Together they cover the 06:00-20:00 operating window.
   shifts:
     - name: Morning
       start: "06:00"
@@ -78,9 +78,10 @@ app:
     # A stop further than this from the depot is warned about as a probable geocoding error.
     # It is never excluded from the route. Set to 0 to disable the check.
     max-stop-distance-km: 150
-    # Wall-clock ceiling measured from the first shift's start. Two 8h shifts at 06:00 and 12:00
-    # span 14h, so this is headroom rather than a binding limit at the default settings.
-    max-operational-hours: 18
+    # The operating window, measured from the first shift's start: 06:00 to 20:00.
+    # It binds exactly at the default settings - the afternoon driver's eight hours end at 20:00
+    # on the dot - so a third shift, or a later start, gets no budget and is reported as skipped.
+    max-operational-hours: 14
     osrm:
       base-url: https://router.project-osrm.org
       timeout-seconds: 10

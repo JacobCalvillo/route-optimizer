@@ -27,6 +27,18 @@ class ShiftPlannerTest {
         return stops;
     }
 
+    /** The same configuration with a different operating ceiling. */
+    private static AppProperties withOperatingHours(AppProperties from, double hours) {
+        return new AppProperties(
+                from.cors(),
+                from.ai(),
+                from.geocoding(),
+                new AppProperties.Routing(
+                        "haversine", 1.3, 30, 5, 500, 200, 1000, 150, hours,
+                        from.routing().osrm()),
+                from.shifts());
+    }
+
     private OptimizationResult optimize(AppProperties properties, List<RouteStop> stops) {
         return new RouteOptimizer(properties, TestFixtures.haversineProvider(properties))
                 .optimize(TestFixtures.DEPOT, "depot", stops, LocalTime.of(6, 0));
@@ -100,23 +112,46 @@ class ShiftPlannerTest {
     }
 
     @Test
+    void anUnreachableStopDoesNotBlockAnEntireShift() {
+        // Acapulco from a Mexico City depot needs longer than a whole shift on its own. Because
+        // the tour is cut contiguously, leaving it in the queue used to stop the afternoon driver
+        // from taking anything at all while a dozen reachable stops waited behind it.
+        AppProperties properties = TestFixtures.properties(500, 200, TWO_SHIFTS);
+        List<RouteStop> stops = new java.util.ArrayList<>(manyStops(12));
+        stops.add(TestFixtures.stop("acapulco", 16.8531, -99.8237));
+
+        OptimizationResult result = optimize(properties, stops);
+
+        assertThat(result.unscheduled()).extracting(RouteStop::label).contains("acapulco");
+        assertThat(result.warnings())
+                .anySatisfy(warning -> assertThat(warning).contains("longer than a full shift"));
+        // Both drivers still get work.
+        assertThat(result.shifts()).hasSize(2);
+        assertThat(result.shifts()).allSatisfy(shift ->
+                assertThat(shift.evaluation().schedule()).isNotEmpty());
+    }
+
+    @Test
+    void theAfternoonShiftEndsExactlyAtTheCloseOfTheOperatingWindow() {
+        // 06:00 to 20:00 is fourteen hours, and the afternoon driver's eight land on the boundary:
+        // the ceiling binds exactly rather than leaving slack, so this is worth pinning.
+        AppProperties properties = TestFixtures.properties(500, 200, TWO_SHIFTS);
+        AppProperties realDay = withOperatingHours(properties, 14);
+
+        OptimizationResult result = optimize(realDay, manyStops(14));
+
+        assertThat(result.shifts()).allSatisfy(shift ->
+                assertThat(shift.end()).isBeforeOrEqualTo(LocalTime.of(20, 0)));
+    }
+
+    @Test
     void respectsTheOperatingCeilingEvenWhenAShiftWouldAllowMore() {
         // A second shift starting at 12:00 with a 10-hour ceiling from 06:00 has only 4 hours left.
         AppProperties properties = TestFixtures.properties(
                 500,
                 200,
                 List.of(TestFixtures.shift("Morning", "06:00", 8), TestFixtures.shift("Afternoon", "12:00", 8)));
-        AppProperties capped = new AppProperties(
-                properties.cors(),
-                properties.ai(),
-                properties.geocoding(),
-                new AppProperties.Routing(
-                        "haversine", 1.3, 30, 5, 500, 200, 1000, 150,
-                        /* maxOperationalHours */ 10,
-                        properties.routing().osrm()),
-                properties.shifts());
-
-        OptimizationResult result = optimize(capped, manyStops(14));
+        OptimizationResult result = optimize(withOperatingHours(properties, 10), manyStops(14));
 
         assertThat(result.shifts()).hasSizeLessThanOrEqualTo(2);
         result.shifts().stream()

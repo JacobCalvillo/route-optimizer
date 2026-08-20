@@ -185,6 +185,8 @@ Defaults live in `backend/src/main/resources/application.yml`; override any of t
 | `app.routing.matrix` | `osrm` | `haversine` for an offline approximation with no network |
 | `app.routing.osrm.overview` | `full` | Detail of the drawn route line; `simplified` for a lighter payload |
 | `app.routing.max-stop-distance-km` | `150` | Warns when a stop is this far from the depot (probable geocoding error) |
+| `app.routing.max-operational-hours` | `14` | The operating window from the first shift's start: 06:00–20:00 |
+| `app.shifts` | 06:00 & 12:00, 8 h each | Driver shifts, filled in order |
 | `app.routing.detour-factor` | `1.3` | Scales straight-line distance toward road distance |
 | `app.routing.average-speed-kmh` | `30` | Used for Haversine durations only; OSRM supplies its own |
 | `app.routing.late-penalty-per-minute` | `500` | Metres of cost per minute past a deadline |
@@ -239,8 +241,13 @@ Haversine and says so in the response's `matrixProvider` field, and the geometry
 
 A route is not one continuous run: each driver works a bounded shift and comes back. The default
 configuration is two eight-hour drivers leaving at 06:00 and 12:00, overlapping deliberately so the
-afternoon driver is already out before the morning one is due back. `app.routing.max-operational-hours`
-caps the whole day from the first shift's start, whatever shifts are configured.
+afternoon driver is already out before the morning one is due back. Together they cover a
+**06:00–20:00 operating window**, which `app.routing.max-operational-hours` enforces as a ceiling
+from the first shift's start.
+
+That ceiling binds exactly at the defaults: the afternoon driver's eight hours end at 20:00 on the
+dot. A third shift, or one starting later, gets no budget and is reported as skipped rather than
+quietly running past closing time.
 
 The approach is **route-first, cluster-second**: solve the whole delivery set as one tour, then cut
 that tour into per-driver routes. It is a long-standing VRP heuristic, and it earns its place here
@@ -256,6 +263,12 @@ each cover a coherent area. Two details matter:
 What fits in no shift is returned in `unscheduled` with a reason, rather than crammed in. A plan
 that silently promises an eleven-hour day is worse than one that names the stops that did not make
 it.
+
+One consequence of cutting contiguously is worth knowing: a stop that needs longer than a whole
+shift on its own would sit at the front of the remainder and block the next driver entirely. With a
+Mexico City depot and a delivery in Acapulco, the afternoon shift came back empty while a dozen
+reachable stops queued behind it. Such stops are now identified and set aside *before* packing
+starts.
 
 > The response carries three distances, and conflating them is a trap worth naming. `initial` is
 > the greedy tour, `improvedTour` is that tour after 2-opt, and `total` is what is actually driven
