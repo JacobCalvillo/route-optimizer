@@ -138,7 +138,11 @@ rather than merely claimed (typically 15–25%).
 | `PATCH` | `/api/orders/{id}` | Correct an order; re-geocodes when the address changes |
 | `DELETE` | `/api/orders/{id}` | Delete an order |
 | `POST` | `/api/orders/geocode-retry` | Retry orders still `PENDING` or `FAILED` |
-| `POST` | `/api/routes/optimize` | Optimize; `depot` takes an address or coordinates, plus `departureTime` and optional `orderIds` |
+| `GET` | `/api/depots` | Saved depots, most recently used first |
+| `POST` | `/api/depots` | Save a depot: geocodes once and stores the coordinates |
+| `PATCH` | `/api/depots/{id}` | Rename, or correct the address and re-geocode |
+| `DELETE` | `/api/depots/{id}` | Forget a saved depot |
+| `POST` | `/api/routes/optimize` | Optimize; `depot` takes a saved id, an address, or coordinates |
 
 ```powershell
 curl -X POST http://localhost:8080/api/orders -H "Content-Type: application/json" `
@@ -153,10 +157,20 @@ curl -X POST http://localhost:8080/api/routes/optimize -H "Content-Type: applica
 `depot` accepts three shapes, resolved in this order:
 
 ```jsonc
-{ "lat": 19.4326, "lon": -99.1332 }   // explicit coordinates
-{ "address": "19.4326, -99.1332" }    // a pasted coordinate pair
+{ "id": 2 }                                // a saved depot, no geocoding at all
+{ "lat": 19.4326, "lon": -99.1332 }        // explicit coordinates
+{ "address": "19.4326, -99.1332" }         // a pasted coordinate pair
 { "address": "Zocalo, Ciudad de Mexico" }  // geocoded like any delivery
 ```
+
+Saving a depot geocodes it once and stores the coordinates, so picking it afterwards costs nothing
+— which matters more than it sounds when the geocoder is capped at one request per second. A saved
+depot keeps three separate things: the dispatcher's name for it, the address as typed, and what the
+geocoder resolved that to. The third is what lets you notice the depot landed in the wrong state
+before dispatching from it.
+
+The list comes back most-recently-used first, so the UI preselecting the first entry is the same as
+remembering where you dispatched from last time.
 
 The middle case is why the UI needs only one text field: a bare numeric pair short-circuits to
 coordinates, and anything else goes through the same geocoder and cache the deliveries use.

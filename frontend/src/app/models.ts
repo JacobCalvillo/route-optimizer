@@ -115,9 +115,24 @@ export interface OptimizedRoute {
   warnings: string[];
 }
 
+/** A depot saved for reuse, with its coordinates already resolved. */
+export interface Depot {
+  id: number;
+  name: string;
+  address: string | null;
+  normalizedAddress: string | null;
+  lat: number;
+  lon: number;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
 export interface OptimizeRequest {
-  /** Either an address to geocode, or explicit coordinates. `address` also accepts "lat, lon". */
-  depot: { address?: string; lat?: number; lon?: number; label?: string };
+  /**
+   * A saved depot by id, explicit coordinates, or an address to geocode.
+   * `address` also accepts a pasted "lat, lon" pair.
+   */
+  depot: { id?: number; address?: string; lat?: number; lon?: number; label?: string };
   /** Optional: the shifts define when drivers actually leave. */
   departureTime?: string;
   orderIds?: number[];

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  Depot,
   Health,
   ManualOrder,
   OptimizeRequest,
@@ -48,6 +49,19 @@ export class ApiService {
 
   retryGeocoding(): Observable<Order[]> {
     return this.http.post<Order[]>(`${this.base}/orders/geocode-retry`, {});
+  }
+
+  listDepots(): Observable<Depot[]> {
+    return this.http.get<Depot[]>(`${this.base}/depots`);
+  }
+
+  /** Geocodes once on save, so selecting it later costs nothing. */
+  saveDepot(name: string, address: string): Observable<Depot> {
+    return this.http.post<Depot>(`${this.base}/depots`, { name, address });
+  }
+
+  deleteDepot(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/depots/${id}`);
   }
 
   optimize(request: OptimizeRequest): Observable<OptimizedRoute> {

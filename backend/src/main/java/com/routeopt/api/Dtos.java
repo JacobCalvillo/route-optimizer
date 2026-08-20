@@ -2,6 +2,7 @@ package com.routeopt.api;
 
 import com.routeopt.domain.Coordinate;
 import com.routeopt.domain.DeliveryOrder;
+import com.routeopt.domain.Depot;
 import com.routeopt.domain.Priority;
 import com.routeopt.routing.RouteStop;
 import com.routeopt.routing.StopSchedule;
@@ -42,13 +43,19 @@ public final class Dtos {
             String customerName,
             String notes) {}
 
+    public record SaveDepotRequest(
+            @NotBlank(message = "must not be empty") String name,
+            @NotBlank(message = "must not be empty") String address) {}
+
     /**
-     * The depot, given either as an address to geocode or as explicit coordinates.
+     * The depot: a saved one by id, explicit coordinates, or an address to geocode.
      *
-     * <p>No field is required on its own: {@code DepotResolver} enforces that at least one usable
-     * combination arrived, because bean validation cannot express "address, or both lat and lon".
+     * <p>No field is required on its own, because bean validation cannot express "an id, or an
+     * address, or both lat and lon". The resolver enforces that one usable combination arrived.
      */
     public record DepotRequest(
+            /* A saved depot. Takes precedence over everything else and needs no geocoding. */
+            Long id,
             String address,
             @DecimalMin("-90") @DecimalMax("90") Double lat,
             @DecimalMin("-180") @DecimalMax("180") Double lon,
@@ -190,6 +197,29 @@ public final class Dtos {
             String matrixProvider,
             String geometrySource,
             List<String> warnings) {}
+
+    public record DepotResponse(
+            Long id,
+            String name,
+            String address,
+            String normalizedAddress,
+            double lat,
+            double lon,
+            Instant lastUsedAt,
+            Instant createdAt) {
+
+        public static DepotResponse from(Depot depot) {
+            return new DepotResponse(
+                    depot.getId(),
+                    depot.getName(),
+                    depot.getAddress(),
+                    depot.getNormalizedAddress(),
+                    depot.getLat(),
+                    depot.getLon(),
+                    depot.getLastUsedAt(),
+                    depot.getCreatedAt());
+        }
+    }
 
     public record HealthResponse(
             String status,

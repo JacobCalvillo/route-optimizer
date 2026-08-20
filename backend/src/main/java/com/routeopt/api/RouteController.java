@@ -14,6 +14,7 @@ import com.routeopt.routing.RouteOptimizer;
 import com.routeopt.routing.RouteStop;
 import com.routeopt.routing.ShiftPlan;
 import com.routeopt.service.DepotResolver;
+import com.routeopt.service.DepotService;
 import com.routeopt.service.DepotResolver.ResolvedDepot;
 import com.routeopt.service.OrderService;
 import jakarta.validation.Valid;
@@ -33,6 +34,7 @@ public class RouteController {
     private final RouteOptimizer optimizer;
     private final RouteGeometryProvider geometryProvider;
     private final DepotResolver depotResolver;
+    private final DepotService depotService;
     private final AppProperties properties;
 
     public RouteController(
@@ -40,11 +42,13 @@ public class RouteController {
             RouteOptimizer optimizer,
             RouteGeometryProvider geometryProvider,
             DepotResolver depotResolver,
+            DepotService depotService,
             AppProperties properties) {
         this.orders = orders;
         this.optimizer = optimizer;
         this.geometryProvider = geometryProvider;
         this.depotResolver = depotResolver;
+        this.depotService = depotService;
         this.properties = properties;
     }
 
@@ -66,11 +70,15 @@ public class RouteController {
                             + "Fix the addresses or call POST /api/orders/geocode-retry first.");
         }
 
-        ResolvedDepot depot = depotResolver.resolve(
-                request.depot().address(),
-                request.depot().lat(),
-                request.depot().lon(),
-                request.depot().label());
+        // A saved depot short-circuits everything: its coordinates are already resolved, so this
+        // costs no geocoding call at all.
+        ResolvedDepot depot = request.depot().id() != null
+                ? depotService.useSaved(request.depot().id())
+                : depotResolver.resolve(
+                        request.depot().address(),
+                        request.depot().lat(),
+                        request.depot().lon(),
+                        request.depot().label());
 
         // Absent a requested start, sequence against the first shift's - the day really does begin
         // when the first driver leaves.

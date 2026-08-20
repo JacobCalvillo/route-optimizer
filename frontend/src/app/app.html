@@ -33,23 +33,58 @@
     <section class="panel">
       <h2>Plan the day</h2>
       <div class="depot-form">
-        <label>
-          Depot label
-          <input
-            type="text"
-            [ngModel]="depotLabel()"
-            (ngModelChange)="depotLabel.set($event)"
-          />
-        </label>
         <label class="wide">
-          Depot address or coordinates
-          <input
-            type="text"
-            [ngModel]="depot()"
-            (ngModelChange)="depot.set($event)"
-            placeholder="Av. Chapultepec 1, Ciudad de Mexico"
-          />
+          Depot
+          <select
+            [ngModel]="selectedDepotId() ?? ''"
+            (ngModelChange)="onDepotSelected($event)"
+          >
+            @for (saved of depots(); track saved.id) {
+              <option [value]="saved.id">{{ saved.name }}</option>
+            }
+            <option value="">+ Use a different address…</option>
+          </select>
         </label>
+
+        @if (selectedDepotId(); as id) {
+          <div class="depot-saved wide">
+            @for (saved of depots(); track saved.id) {
+              @if (saved.id === id) {
+                <span class="depot-resolved">{{ saved.normalizedAddress ?? saved.address }}</span>
+              }
+            }
+            <button type="button" class="ghost danger" (click)="deleteDepot(id)">Forget</button>
+          </div>
+        } @else {
+          <label>
+            Name it
+            <input
+              type="text"
+              [ngModel]="depotLabel()"
+              (ngModelChange)="depotLabel.set($event)"
+              placeholder="Central Warehouse"
+            />
+          </label>
+          <label>
+            Address or coordinates
+            <input
+              type="text"
+              [ngModel]="depot()"
+              (ngModelChange)="depot.set($event)"
+              placeholder="Av. Chapultepec 1, Ciudad de Mexico"
+            />
+          </label>
+          <div class="actions wide">
+            <button
+              type="button"
+              class="ghost"
+              (click)="saveDepot()"
+              [disabled]="savingDepot() || !depot().trim() || !depotLabel().trim()"
+            >
+              {{ savingDepot() ? 'Saving…' : 'Save for next time' }}
+            </button>
+          </div>
+        }
       </div>
       <p class="hint shift-note">
         Drivers leave on their configured shifts. Anything that does not fit within their hours is
@@ -59,7 +94,7 @@
         type="button"
         class="primary wide"
         (click)="optimize()"
-        [disabled]="optimizing() || routableCount() === 0 || !depot().trim()"
+        [disabled]="optimizing() || !canOptimize()"
       >
         {{ optimizing() ? 'Optimizing…' : 'Optimize route (' + routableCount() + ' stops)' }}
       </button>
