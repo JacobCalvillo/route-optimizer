@@ -8,6 +8,10 @@
     }
   </header>
 
+  @if (error(); as message) {
+    <p class="error">{{ message }}</p>
+  }
+
   @if (orders().length === 0) {
     <p class="hint">No orders yet. Add some above.</p>
   }

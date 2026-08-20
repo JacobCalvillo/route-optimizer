@@ -20,6 +20,7 @@ export class OrderList {
   readonly editingId = signal<number | null>(null);
   readonly draft = signal<OrderUpdate>({});
   readonly busy = signal(false);
+  readonly error = signal<string | null>(null);
 
   startEdit(order: Order): void {
     this.editingId.set(order.id);
@@ -43,6 +44,7 @@ export class OrderList {
 
   save(order: Order): void {
     this.busy.set(true);
+    this.error.set(null);
     // Empty strings from the time inputs mean "clear the bound", so normalize them to null.
     const draft = this.draft();
     this.api
@@ -57,30 +59,53 @@ export class OrderList {
           this.cancelEdit();
           this.changed.emit();
         },
-        error: () => this.busy.set(false),
+        error: (err) => this.handleFailure(err, 'Could not save the order.'),
       });
   }
 
   remove(order: Order): void {
     this.busy.set(true);
+    this.error.set(null);
     this.api.deleteOrder(order.id).subscribe({
       next: () => {
         this.busy.set(false);
         this.changed.emit();
       },
-      error: () => this.busy.set(false),
+      error: (err) => this.handleFailure(err, 'Could not delete the order.'),
     });
   }
 
   retryGeocoding(): void {
     this.busy.set(true);
+    this.error.set(null);
     this.api.retryGeocoding().subscribe({
       next: () => {
         this.busy.set(false);
         this.changed.emit();
       },
-      error: () => this.busy.set(false),
+      error: (err) => this.handleFailure(err, 'Could not retry geocoding.'),
     });
+  }
+
+  /**
+   * Reports a failed mutation and reloads the list.
+   *
+   * <p>Errors used to be swallowed, which left the row on screen as if nothing had happened. A 404
+   * is the case that made this matter: the order was already gone server-side, so the row was a
+   * ghost, and every further click on it failed the same silent way. Reloading on *any* failure is
+   * the self-correcting choice — whatever the client believed, the server's answer replaces it.
+   */
+  private handleFailure(error: unknown, fallback: string): void {
+    this.busy.set(false);
+    this.cancelEdit();
+
+    const response = error as { status?: number; error?: { message?: string } };
+    this.error.set(
+      response?.status === 404
+        ? 'That order no longer exists — the list has been refreshed.'
+        : (response?.error?.message ?? fallback),
+    );
+    this.changed.emit();
   }
 
   /** Only orders with no usable coordinates. APPROXIMATE ones route fine; they just need a look. */
