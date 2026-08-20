@@ -4,30 +4,61 @@ export type Priority = 'URGENT' | 'NORMAL' | 'LOW';
 
 export type GeocodeStatus = 'PENDING' | 'OK' | 'APPROXIMATE' | 'NO_ADDRESS' | 'FAILED';
 
+/** An address in the parts the geocoder searches by. Every field optional. */
+export interface AddressInput {
+  street?: string | null;
+  exteriorNumber?: string | null;
+  interiorNumber?: string | null;
+  neighborhood?: string | null;
+  postalCode?: string | null;
+  city?: string | null;
+  state?: string | null;
+}
+
+/** The same address as stored, plus the one-line form for display. */
+export interface Address extends AddressInput {
+  singleLine: string | null;
+}
+
+export const EMPTY_ADDRESS: AddressInput = {
+  street: '',
+  exteriorNumber: '',
+  interiorNumber: '',
+  neighborhood: '',
+  postalCode: '',
+  city: '',
+  state: '',
+};
+
 /** A parsed-but-not-yet-stored order, as returned by POST /api/orders/parse. */
 export interface ParsedOrder {
   customerName: string | null;
-  address: string | null;
+  address: Address;
   priority: Priority;
   timeFrom: string | null;
   timeTo: string | null;
-  notes: string | null;
+  phone: string | null;
+  references: string | null;
 }
 
 /** Direct structured entry, used when no free-form parsing is needed. */
 export interface ManualOrder {
-  address: string;
+  address?: AddressInput | null;
+  rawAddress?: string | null;
   customerName?: string | null;
   priority: Priority;
   timeFrom?: string | null;
   timeTo?: string | null;
   serviceMinutes?: number | null;
+  phone?: string | null;
   notes?: string | null;
 }
 
 export interface Order {
   id: number;
   customerName: string | null;
+  address: Address;
+  phone: string | null;
   rawAddress: string | null;
   normalizedAddress: string | null;
   lat: number | null;
@@ -42,12 +73,14 @@ export interface Order {
 }
 
 export interface OrderUpdate {
-  address?: string | null;
+  address?: AddressInput | null;
+  rawAddress?: string | null;
   priority?: Priority;
   timeFrom?: string | null;
   timeTo?: string | null;
   serviceMinutes?: number | null;
   customerName?: string | null;
+  phone?: string | null;
   notes?: string | null;
 }
 
@@ -119,6 +152,7 @@ export interface OptimizedRoute {
 export interface Depot {
   id: number;
   name: string;
+  addressParts: Address;
   address: string | null;
   normalizedAddress: string | null;
   lat: number;

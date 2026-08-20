@@ -29,6 +29,12 @@ class DepotResolverTest {
             asked.add(address);
             return answer;
         }
+
+        @Override
+        public GeocodeResult geocode(com.routeopt.domain.PostalAddress address) {
+            asked.add(address.toSingleLine());
+            return answer;
+        }
     }
 
     private static RecordingGeocoder resolvesTo(Coordinate coordinate, String displayName) {

@@ -7,6 +7,7 @@ import com.routeopt.config.AppProperties;
 import com.routeopt.domain.DeliveryOrder;
 import com.routeopt.domain.DeliveryOrderRepository;
 import com.routeopt.domain.GeocodeStatus;
+import com.routeopt.domain.PostalAddress;
 import com.routeopt.domain.Priority;
 import com.routeopt.geo.GeocodeResult;
 import com.routeopt.geo.GeocodingService;
@@ -55,11 +56,19 @@ public class OrderService {
             DeliveryOrder order = new DeliveryOrder();
             order.setRawText(text);
             order.setCustomerName(parsedOrder.customerName());
-            order.setRawAddress(parsedOrder.address());
+            order.setAddress(new PostalAddress(
+                    parsedOrder.street(),
+                    parsedOrder.exteriorNumber(),
+                    parsedOrder.interiorNumber(),
+                    parsedOrder.neighborhood(),
+                    parsedOrder.postalCode(),
+                    parsedOrder.city(),
+                    parsedOrder.state()));
             order.setPriority(parsedOrder.priority());
             order.setTimeFrom(TimeParser.parse(parsedOrder.timeFrom()));
             order.setTimeTo(TimeParser.parse(parsedOrder.timeTo()));
-            order.setNotes(parsedOrder.notes());
+            order.setPhone(parsedOrder.phone());
+            order.setNotes(parsedOrder.references());
             order.setServiceMinutes(properties.routing().defaultServiceMinutes());
 
             resolveAddress(order);
@@ -80,20 +89,28 @@ public class OrderService {
     @Transactional
     public DeliveryOrder createManual(
             String address,
+            PostalAddress parts,
             String customerName,
             Priority priority,
             LocalTime timeFrom,
             LocalTime timeTo,
             Integer serviceMinutes,
+            String phone,
             String notes) {
 
         DeliveryOrder order = new DeliveryOrder();
-        order.setRawText(address);
-        order.setRawAddress(address);
+        if (parts != null && !parts.isEmpty()) {
+            order.setAddress(parts);
+            order.setRawText(order.getRawAddress());
+        } else {
+            order.setRawText(address);
+            order.setRawAddress(address);
+        }
         order.setCustomerName(customerName);
         order.setPriority(priority);
         order.setTimeFrom(timeFrom);
         order.setTimeTo(timeTo);
+        order.setPhone(phone);
         order.setNotes(notes);
         order.setServiceMinutes(
                 serviceMinutes == null ? properties.routing().defaultServiceMinutes() : serviceMinutes);
@@ -122,20 +139,30 @@ public class OrderService {
     public DeliveryOrder update(
             Long id,
             String address,
+            PostalAddress parts,
             Priority priority,
             LocalTime timeFrom,
             LocalTime timeTo,
             Integer serviceMinutes,
             String customerName,
+            String phone,
             String notes) {
 
         DeliveryOrder order = repository
                 .findById(id)
                 .orElseThrow(() -> new NoSuchElementException("No order with id " + id));
 
-        boolean addressChanged = address != null && !address.equals(order.getRawAddress());
-        if (address != null) {
+        boolean addressChanged = false;
+        if (parts != null && !parts.isEmpty()) {
+            addressChanged = !java.util.Objects.equals(parts.toSingleLine(), order.getRawAddress());
+            order.setAddress(parts);
+        } else if (address != null && !address.equals(order.getRawAddress())) {
+            addressChanged = true;
             order.setRawAddress(address);
+            order.setAddress(new PostalAddress());
+        }
+        if (phone != null) {
+            order.setPhone(phone);
         }
         if (priority != null) {
             order.setPriority(priority);
@@ -187,7 +214,11 @@ public class OrderService {
             order.setGeocodeStatus(GeocodeStatus.NO_ADDRESS);
             return;
         }
-        GeocodeResult result = geocoding.geocode(order.getRawAddress());
+        // Structured when the parts are known - it finds addresses the free-form search cannot -
+        // and the single line otherwise, for legacy orders and whole-address manual entry.
+        GeocodeResult result = order.getAddress().isGeocodable()
+                ? geocoding.geocode(order.getAddress())
+                : geocoding.geocode(order.getRawAddress());
         if (result.found()) {
             order.setLat(result.coordinate().lat());
             order.setLon(result.coordinate().lon());

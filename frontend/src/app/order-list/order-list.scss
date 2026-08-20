@@ -97,3 +97,7 @@
   gap: 0.35rem;
   flex-wrap: wrap;
 }
+
+.edit-address {
+  grid-column: 1 / -1;
+}

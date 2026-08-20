@@ -2,6 +2,7 @@ package com.routeopt.service;
 
 import com.routeopt.domain.Depot;
 import com.routeopt.domain.DepotRepository;
+import com.routeopt.domain.PostalAddress;
 import com.routeopt.service.DepotResolver.ResolvedDepot;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -33,7 +34,7 @@ public class DepotService {
 
     /** Geocodes the address and stores the result under {@code name}. */
     @Transactional
-    public Depot save(String name, String address) {
+    public Depot save(String name, PostalAddress parts, String rawAddress) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("A saved depot needs a name.");
         }
@@ -44,29 +45,43 @@ public class DepotService {
                             .formatted(existing.getName()));
         });
 
-        // Reuses the same ladder, cache and coordinate short-circuit the deliveries get. The label
-        // is left null on purpose so the resolver hands back the geocoder's own display name - the
-        // dispatcher's name for the depot is stored separately, and seeing where it actually landed
-        // is the point of keeping both.
-        ResolvedDepot resolved = resolver.resolve(address, null, null, null);
-        return repository.save(new Depot(
+        // Structured when the parts are known, free-form otherwise. The label is left null on
+        // purpose so the resolver hands back the geocoder's own display name - the dispatcher's
+        // name is stored separately, and seeing where it actually landed is the point of both.
+        boolean structured = parts != null && parts.isGeocodable();
+        ResolvedDepot resolved = structured
+                ? resolver.resolve(parts, null)
+                : resolver.resolve(rawAddress, null, null, null);
+
+        Depot depot = new Depot(
                 trimmed,
-                address == null ? null : address.trim(),
+                structured ? parts.toSingleLine() : (rawAddress == null ? null : rawAddress.trim()),
                 resolved.label(),
                 resolved.coordinate().lat(),
-                resolved.coordinate().lon()));
+                resolved.coordinate().lon());
+        if (structured) {
+            depot.setPostalAddress(parts);
+        }
+        return repository.save(depot);
     }
 
     @Transactional
-    public Depot update(Long id, String name, String address) {
+    public Depot update(Long id, String name, PostalAddress parts, String rawAddress) {
         Depot depot = require(id);
         if (name != null && !name.isBlank()) {
             depot.setName(name.trim());
         }
-        if (address != null && !address.equals(depot.getAddress())) {
-            // A corrected address is the point of this endpoint, so re-resolve it.
-            ResolvedDepot resolved = resolver.resolve(address, null, null, null);
-            depot.setAddress(address.trim());
+
+        // A corrected address is the point of this endpoint, so re-resolve whichever form arrived.
+        if (parts != null && parts.isGeocodable()) {
+            ResolvedDepot resolved = resolver.resolve(parts, null);
+            depot.setPostalAddress(parts);
+            depot.setNormalizedAddress(resolved.label());
+            depot.setLat(resolved.coordinate().lat());
+            depot.setLon(resolved.coordinate().lon());
+        } else if (rawAddress != null && !rawAddress.equals(depot.getAddress())) {
+            ResolvedDepot resolved = resolver.resolve(rawAddress, null, null, null);
+            depot.setAddress(rawAddress.trim());
             depot.setNormalizedAddress(resolved.label());
             depot.setLat(resolved.coordinate().lat());
             depot.setLon(resolved.coordinate().lon());

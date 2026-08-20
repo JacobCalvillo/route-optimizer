@@ -3,6 +3,7 @@ package com.routeopt.api;
 import com.routeopt.domain.Coordinate;
 import com.routeopt.domain.DeliveryOrder;
 import com.routeopt.domain.Depot;
+import com.routeopt.domain.PostalAddress;
 import com.routeopt.domain.Priority;
 import com.routeopt.routing.RouteStop;
 import com.routeopt.routing.StopSchedule;
@@ -24,28 +25,56 @@ public final class Dtos {
 
     public record OrderTextRequest(@NotBlank(message = "must not be empty") String text) {}
 
-    /** Direct structured entry, for when the address is already clean and no parsing is needed. */
+    /**
+     * An address in the parts a geocoder can use.
+     *
+     * <p>Every field optional: a form that only knows the street and city should still be able to
+     * submit, and a wrong guessed city is worse than a missing one.
+     */
+    public record AddressRequest(
+            String street,
+            String exteriorNumber,
+            String interiorNumber,
+            String neighborhood,
+            String postalCode,
+            String city,
+            String state) {
+
+        public PostalAddress toPostalAddress() {
+            return new PostalAddress(
+                    street, exteriorNumber, interiorNumber, neighborhood, postalCode, city, state);
+        }
+    }
+
+    /** Direct structured entry, for when the address is already known and no parsing is needed. */
     public record ManualOrderRequest(
-            @NotBlank(message = "must not be empty") String address,
+            /* Either the parts, or a whole address as one string. */
+            AddressRequest address,
+            String rawAddress,
             String customerName,
             Priority priority,
             LocalTime timeFrom,
             LocalTime timeTo,
             Integer serviceMinutes,
+            String phone,
             String notes) {}
 
     public record OrderUpdateRequest(
-            String address,
+            AddressRequest address,
+            String rawAddress,
             Priority priority,
             LocalTime timeFrom,
             LocalTime timeTo,
             Integer serviceMinutes,
             String customerName,
+            String phone,
             String notes) {}
 
     public record SaveDepotRequest(
             @NotBlank(message = "must not be empty") String name,
-            @NotBlank(message = "must not be empty") String address) {}
+            /* Either the parts, or a whole address as one string. */
+            AddressRequest address,
+            String rawAddress) {}
 
     /**
      * The depot: a saved one by id, explicit coordinates, or an address to geocode.
@@ -73,6 +102,8 @@ public final class Dtos {
     public record OrderResponse(
             Long id,
             String customerName,
+            AddressResponse address,
+            String phone,
             String rawAddress,
             String normalizedAddress,
             Double lat,
@@ -89,6 +120,8 @@ public final class Dtos {
             return new OrderResponse(
                     order.getId(),
                     order.getCustomerName(),
+                    AddressResponse.from(order.getAddress()),
+                    order.getPhone(),
                     order.getRawAddress(),
                     order.getNormalizedAddress(),
                     order.getLat(),
@@ -103,14 +136,39 @@ public final class Dtos {
         }
     }
 
+    /** The address as stored, both in parts and as one line. */
+    public record AddressResponse(
+            String street,
+            String exteriorNumber,
+            String interiorNumber,
+            String neighborhood,
+            String postalCode,
+            String city,
+            String state,
+            String singleLine) {
+
+        public static AddressResponse from(PostalAddress address) {
+            return new AddressResponse(
+                    address.getStreet(),
+                    address.getExteriorNumber(),
+                    address.getInteriorNumber(),
+                    address.getNeighborhood(),
+                    address.getPostalCode(),
+                    address.getCity(),
+                    address.getState(),
+                    address.toSingleLine());
+        }
+    }
+
     /** A parsed-but-not-yet-stored order, returned by the preview endpoint. */
     public record ParsedOrderResponse(
             String customerName,
-            String address,
+            AddressResponse address,
             Priority priority,
             String timeFrom,
             String timeTo,
-            String notes) {}
+            String phone,
+            String references) {}
 
     public record RouteStopResponse(
             int sequence,
@@ -201,6 +259,7 @@ public final class Dtos {
     public record DepotResponse(
             Long id,
             String name,
+            AddressResponse addressParts,
             String address,
             String normalizedAddress,
             double lat,
@@ -212,6 +271,7 @@ public final class Dtos {
             return new DepotResponse(
                     depot.getId(),
                     depot.getName(),
+                    AddressResponse.from(depot.getPostalAddress()),
                     depot.getAddress(),
                     depot.getNormalizedAddress(),
                     depot.getLat(),

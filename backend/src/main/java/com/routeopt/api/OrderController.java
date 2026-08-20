@@ -1,10 +1,12 @@
 package com.routeopt.api;
 
+import com.routeopt.api.Dtos.AddressResponse;
 import com.routeopt.api.Dtos.ManualOrderRequest;
 import com.routeopt.api.Dtos.OrderResponse;
 import com.routeopt.api.Dtos.OrderTextRequest;
 import com.routeopt.api.Dtos.OrderUpdateRequest;
 import com.routeopt.api.Dtos.ParsedOrderResponse;
+import com.routeopt.domain.PostalAddress;
 import com.routeopt.domain.Priority;
 import com.routeopt.service.OrderService;
 import jakarta.validation.Valid;
@@ -36,11 +38,19 @@ public class OrderController {
         return orders.preview(request.text()).stream()
                 .map(parsed -> new ParsedOrderResponse(
                         parsed.customerName(),
-                        parsed.address(),
+                        AddressResponse.from(new PostalAddress(
+                                parsed.street(),
+                                parsed.exteriorNumber(),
+                                parsed.interiorNumber(),
+                                parsed.neighborhood(),
+                                parsed.postalCode(),
+                                parsed.city(),
+                                parsed.state())),
                         parsed.priority(),
                         parsed.timeFrom(),
                         parsed.timeTo(),
-                        parsed.notes()))
+                        parsed.phone(),
+                        parsed.references()))
                 .toList();
     }
 
@@ -55,12 +65,14 @@ public class OrderController {
     @ResponseStatus(HttpStatus.CREATED)
     public OrderResponse createManual(@Valid @RequestBody ManualOrderRequest request) {
         return OrderResponse.from(orders.createManual(
-                request.address(),
+                request.rawAddress(),
+                request.address() == null ? null : request.address().toPostalAddress(),
                 request.customerName(),
                 request.priority() == null ? Priority.NORMAL : request.priority(),
                 request.timeFrom(),
                 request.timeTo(),
                 request.serviceMinutes(),
+                request.phone(),
                 request.notes()));
     }
 
@@ -73,12 +85,14 @@ public class OrderController {
     public OrderResponse update(@PathVariable Long id, @RequestBody OrderUpdateRequest request) {
         return OrderResponse.from(orders.update(
                 id,
-                request.address(),
+                request.rawAddress(),
+                request.address() == null ? null : request.address().toPostalAddress(),
                 request.priority(),
                 request.timeFrom(),
                 request.timeTo(),
                 request.serviceMinutes(),
                 request.customerName(),
+                request.phone(),
                 request.notes()));
     }
 

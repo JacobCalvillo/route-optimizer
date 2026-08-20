@@ -1,7 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from './api.service';
-import { Depot, Health, OptimizedRoute, Order } from './models';
+import { AddressInput, Depot, EMPTY_ADDRESS, Health, OptimizedRoute, Order } from './models';
+import { AddressForm } from './address-form/address-form';
 import { OrderInput } from './order-input/order-input';
 import { OrderList } from './order-list/order-list';
 import { RouteMap } from './route-map/route-map';
@@ -10,7 +11,15 @@ import { StopList } from './stop-list/stop-list';
 
 @Component({
   selector: 'app-root',
-  imports: [FormsModule, OrderInput, OrderList, RouteMap, RouteSummary, StopList],
+  imports: [
+    FormsModule,
+    AddressForm,
+    OrderInput,
+    OrderList,
+    RouteMap,
+    RouteSummary,
+    StopList,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -28,9 +37,10 @@ export class App {
   readonly selectedDepotId = signal<number | null>(null);
   readonly savingDepot = signal(false);
 
-  // Coordinates by default so the app works offline out of the box, but the field takes an
-  // address too - the backend geocodes anything that is not a "lat, lon" pair.
-  readonly depot = signal('19.4326, -99.1332');
+  /** A new depot in parts, which is what the structured geocoder searches by. */
+  readonly depotAddress = signal<AddressInput>({ ...EMPTY_ADDRESS });
+  /** An escape hatch for a pasted "lat, lon" pair, used only when the parts are empty. */
+  readonly depotCoordinates = signal('');
   readonly depotLabel = signal('Central Warehouse');
 
   constructor() {
@@ -57,17 +67,25 @@ export class App {
     this.selectedDepotId.set(value === '' ? null : Number(value));
   }
 
-  /** Saves the typed address under its label, then selects it. */
+  /** Whether the typed parts are enough for the geocoder to search by. */
+  hasDepotAddress(): boolean {
+    const a = this.depotAddress();
+    return !!(a.street?.trim() || a.city?.trim() || a.postalCode?.trim());
+  }
+
+  /** Saves the typed depot under its name, then selects it. */
   saveDepot(): void {
-    const address = this.depot().trim();
     const name = this.depotLabel().trim();
-    if (!address || !name) {
-      this.error.set('A saved depot needs both a name and an address.');
+    const coordinates = this.depotCoordinates().trim();
+    if (!name || (!this.hasDepotAddress() && !coordinates)) {
+      this.error.set('A saved depot needs a name and either an address or coordinates.');
       return;
     }
     this.savingDepot.set(true);
     this.error.set(null);
-    this.api.saveDepot(name, address).subscribe({
+    // Parts when there are parts; the pasted pair otherwise.
+    const parts = this.hasDepotAddress() ? this.depotAddress() : null;
+    this.api.saveDepot(name, parts, coordinates || undefined).subscribe({
       next: (saved) => {
         this.savingDepot.set(false);
         this.selectedDepotId.set(saved.id);
@@ -93,7 +111,12 @@ export class App {
   }
 
   canOptimize(): boolean {
-    return this.routableCount() > 0 && (this.selectedDepotId() !== null || !!this.depot().trim());
+    return (
+      this.routableCount() > 0 &&
+      (this.selectedDepotId() !== null ||
+        this.hasDepotAddress() ||
+        !!this.depotCoordinates().trim())
+    );
   }
 
   refreshHealth(): void {
@@ -118,15 +141,29 @@ export class App {
     return this.orders().filter((order) => order.geocodeStatus === 'OK').length;
   }
 
+  /** A saved id, then typed parts, then a pasted coordinate pair. */
+  private depotForRequest() {
+    if (this.selectedDepotId() !== null) {
+      return { id: this.selectedDepotId()! };
+    }
+    if (this.hasDepotAddress()) {
+      const a = this.depotAddress();
+      return {
+        address: [a.street, a.exteriorNumber, a.neighborhood, a.postalCode, a.city, a.state]
+          .filter((part) => !!part?.trim())
+          .join(', '),
+        label: this.depotLabel(),
+      };
+    }
+    return { address: this.depotCoordinates().trim(), label: this.depotLabel() };
+  }
+
   optimize(): void {
     this.optimizing.set(true);
     this.error.set(null);
     this.api
       .optimize({
-        depot:
-          this.selectedDepotId() !== null
-            ? { id: this.selectedDepotId()! }
-            : { address: this.depot().trim(), label: this.depotLabel() },
+        depot: this.depotForRequest(),
       })
       .subscribe({
         next: (route) => {

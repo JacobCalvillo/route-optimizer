@@ -1,0 +1,37 @@
+.address-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  input {
+    font: inherit;
+    padding: 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    color: inherit;
+    min-width: 0;
+  }
+
+  .street {
+    grid-column: span 2;
+  }
+
+  .narrow {
+    max-width: 8rem;
+  }
+}
+
+.address-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}

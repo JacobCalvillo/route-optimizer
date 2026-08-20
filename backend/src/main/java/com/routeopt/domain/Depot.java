@@ -1,6 +1,7 @@
 package com.routeopt.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,9 +28,13 @@ public class Depot {
     @Column(nullable = false, unique = true, length = 120)
     private String name;
 
-    /** The address as typed, kept so it can be corrected and re-geocoded later. */
+    /** The address as typed or assembled, kept so it can be corrected and re-geocoded later. */
     @Column(length = 500)
     private String address;
+
+    /** The same address in parts, which is what the structured geocoder uses. */
+    @Embedded
+    private PostalAddress postalAddress = new PostalAddress();
 
     /** What the geocoder resolved it to, for display. */
     @Column(length = 500)
@@ -75,6 +80,18 @@ public class Depot {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public PostalAddress getPostalAddress() {
+        return postalAddress == null ? new PostalAddress() : postalAddress;
+    }
+
+    public void setPostalAddress(PostalAddress postalAddress) {
+        this.postalAddress = postalAddress == null ? new PostalAddress() : postalAddress;
+        String line = this.postalAddress.toSingleLine();
+        if (line != null) {
+            this.address = line;
+        }
     }
 
     public String getAddress() {

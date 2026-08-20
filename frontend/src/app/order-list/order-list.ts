@@ -1,12 +1,13 @@
 import { Component, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../api.service';
-import { Order, OrderUpdate, Priority } from '../models';
+import { AddressInput, EMPTY_ADDRESS, Order, OrderUpdate, Priority } from '../models';
+import { AddressForm } from '../address-form/address-form';
 
 /** The stored orders, with inline correction for anything the geocoder could not resolve. */
 @Component({
   selector: 'app-order-list',
-  imports: [FormsModule],
+  imports: [FormsModule, AddressForm],
   templateUrl: './order-list.html',
   styleUrl: './order-list.scss',
 })
@@ -22,14 +23,20 @@ export class OrderList {
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
 
+  readonly addressDraft = signal<AddressInput>({ ...EMPTY_ADDRESS });
+
   startEdit(order: Order): void {
     this.editingId.set(order.id);
+    // Seed from the stored parts. A legacy order has none, so the form starts empty and whatever
+    // is typed becomes its first structured address.
+    this.addressDraft.set({ ...EMPTY_ADDRESS, ...(order.address ?? {}) });
     this.draft.set({
-      address: order.rawAddress,
       priority: order.priority,
       timeFrom: order.timeFrom,
       timeTo: order.timeTo,
       customerName: order.customerName,
+      phone: order.phone,
+      notes: order.notes,
     });
   }
 
@@ -50,6 +57,7 @@ export class OrderList {
     this.api
       .updateOrder(order.id, {
         ...draft,
+        address: this.addressDraft(),
         timeFrom: draft.timeFrom || null,
         timeTo: draft.timeTo || null,
       })

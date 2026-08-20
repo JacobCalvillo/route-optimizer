@@ -39,9 +39,22 @@ public class ClaudeOrderParser implements OrderParser {
             Return one entry per delivery, in the order they appear. A note that lists six
             deliveries must produce six entries.
 
-            Rules:
-            - Copy the address verbatim from the input. Do not translate it, expand abbreviations,
-              add a city or postal code that is not there, or invent an address.
+            Split the address into its parts. This is the most important thing you do here: the
+            geocoder searches by street, city and state separately, and an address handed over as
+            one sentence often cannot be found at all.
+
+            - street is the street name only, with no number and no "Calle"/"Av." expansion beyond
+              what is written. exteriorNumber is the building number.
+            - interiorNumber is the apartment, suite or floor: "4B", "depto 12", "piso 3". Keep it
+              out of street - it helps a driver and confuses a geocoder.
+            - neighborhood is the colonia or fraccionamiento, without the words "Col." or "Fracc.".
+            - city is the city, municipio or delegacion. state is the Mexican state written out in
+              full: "Nuevo Leon", never "N.L."; "Ciudad de Mexico" for CDMX or D.F.
+            - Never invent a city, state or postal code that is not in the text. An address with
+              only a street is better than one with a guessed city, because a wrong city sends the
+              driver to another state.
+
+            Other rules:
             - priority is URGENT when the text conveys haste ("urgente", "lo antes posible", "es
               para ya", "prioridad alta"), LOW when it explicitly says there is no rush ("sin
               prisa", "cuando se pueda", "no corre prisa"), and NORMAL otherwise. Do not guess
@@ -49,8 +62,9 @@ public class ClaudeOrderParser implements OrderParser {
             - timeFrom and timeTo are HH:mm on a 24-hour clock. "antes de las 13:00" gives only
               timeTo, "despues de las 9" gives only timeFrom, "entre 10 y 12" gives both. Convert
               12-hour expressions ("5 de la tarde") to 24-hour form.
-            - Put anything else useful (apartment or suite number, phone, gate code, "dejar con el
-              portero") in notes, in the original language. Never put the address in notes.
+            - phone is a contact number. references is anything else that helps the driver find the
+              door - landmarks, gate codes, "dejar con el portero" - in the original language, never
+              the address itself.
 
             Every field is required and every value must be a string. When a value is absent from
             the text, return an empty string for it. Never write the word "null", and never carry a

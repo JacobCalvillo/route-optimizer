@@ -1,6 +1,7 @@
 package com.routeopt.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -26,9 +27,23 @@ public class DeliveryOrder {
 
     private String customerName;
 
-    /** Address exactly as the user wrote it. */
+    /**
+     * The address as one string.
+     *
+     * <p>Still here for orders created before the structured fields existed, and for manual entry
+     * that types a whole address at once. When {@link #address} has parts, this is derived from
+     * them so display and search agree.
+     */
     @Column(length = 500)
     private String rawAddress;
+
+    /** The address split into geocodable parts. Empty for legacy orders until they are edited. */
+    @Embedded
+    private PostalAddress address = new PostalAddress();
+
+    /** Contact number for the delivery. Never part of a geocoding query. */
+    @Column(length = 60)
+    private String phone;
 
     /** Address as returned by the geocoder, once resolved. */
     @Column(length = 500)
@@ -106,6 +121,27 @@ public class DeliveryOrder {
 
     public void setCustomerName(String customerName) {
         this.customerName = customerName;
+    }
+
+    public PostalAddress getAddress() {
+        return address == null ? new PostalAddress() : address;
+    }
+
+    public void setAddress(PostalAddress address) {
+        this.address = address == null ? new PostalAddress() : address;
+        // Keep the single-line form in step, so lists and tooltips show what was actually searched.
+        String line = this.address.toSingleLine();
+        if (line != null) {
+            this.rawAddress = line;
+        }
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
     public String getRawAddress() {

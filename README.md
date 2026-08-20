@@ -290,6 +290,34 @@ starts.
 > compares the first two. Comparing greedy against the driven total once reported a headline "0%
 > improvement" on a plan where 2-opt had done its job perfectly well.
 
+### The address is stored in parts
+
+An address is kept as `street`, `exteriorNumber`, `interiorNumber`, `neighborhood`, `postalCode`,
+`city` and `state` — not as one string — because that is what the geocoder can actually use.
+Nominatim's **structured query** resolves addresses its free-form search cannot, and the difference
+is not marginal. Two real failures from this project's own history:
+
+| Address | Free-form | Structured |
+|---|---|---|
+| `Fracc. Felipe Tena Ramirez 101, …, 66642 Loma La paz, N.L.` | nothing at all | found on the first attempt, even with the wrong postal code |
+| `Paseo de la Reforma 222` | Playa del Carmen, Quintana Roo | Mexico City, once the city is its own field |
+
+Two field choices carry weight:
+
+- **`interiorNumber` never reaches the geocoder.** An apartment number tells a driver where to
+  knock and tells a search engine nothing; leaving it in the string is one of the reasons real
+  addresses fail to resolve.
+- **`neighborhood` has no structured parameter in Nominatim**, so it is kept for display and for
+  the free-form fallback, where it does help.
+
+The model extracts into these fields directly — splitting a Mexican address is the kind of thing it
+is good at and a regular expression is not. It is instructed never to invent a city or state,
+because a guessed city sends the driver to another state, which is exactly how the Playa del Carmen
+route happened.
+
+Legacy orders keep their single-string address in `rawAddress` and still geocode through the
+free-form ladder; the structured fields fill in when they are next edited.
+
 ### When a real address will not geocode
 
 A dispatcher writes `Fracc. Felipe Tena Ramirez 101, Praderas de Huinala, 66642 Loma La paz, N.L.`

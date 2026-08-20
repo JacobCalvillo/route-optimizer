@@ -24,14 +24,9 @@
       >
         @if (editingId() === order.id) {
           <div class="edit">
-            <label>
-              Address
-              <input
-                type="text"
-                [ngModel]="draft().address"
-                (ngModelChange)="patchDraft({ address: $event })"
-              />
-            </label>
+            <div class="edit-address">
+              <app-address-form [(address)]="addressDraft" />
+            </div>
             <label>
               Customer
               <input
@@ -65,6 +60,23 @@
                 type="time"
                 [ngModel]="draft().timeTo"
                 (ngModelChange)="patchDraft({ timeTo: $event })"
+              />
+            </label>
+            <label>
+              Phone
+              <input
+                type="text"
+                [ngModel]="draft().phone"
+                (ngModelChange)="patchDraft({ phone: $event })"
+              />
+            </label>
+            <label class="edit-address">
+              Notes for the driver
+              <input
+                type="text"
+                [ngModel]="draft().notes"
+                (ngModelChange)="patchDraft({ notes: $event })"
+                placeholder="dejar con el portero"
               />
             </label>
             <div class="actions">

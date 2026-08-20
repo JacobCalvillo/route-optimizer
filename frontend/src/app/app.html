@@ -56,7 +56,7 @@
             <button type="button" class="ghost danger" (click)="deleteDepot(id)">Forget</button>
           </div>
         } @else {
-          <label>
+          <label class="wide">
             Name it
             <input
               type="text"
@@ -65,13 +65,16 @@
               placeholder="Central Warehouse"
             />
           </label>
-          <label>
-            Address or coordinates
+          <div class="wide">
+            <app-address-form [(address)]="depotAddress" />
+          </div>
+          <label class="wide">
+            Or paste coordinates
             <input
               type="text"
-              [ngModel]="depot()"
-              (ngModelChange)="depot.set($event)"
-              placeholder="Av. Chapultepec 1, Ciudad de Mexico"
+              [ngModel]="depotCoordinates()"
+              (ngModelChange)="depotCoordinates.set($event)"
+              placeholder="19.4326, -99.1332"
             />
           </label>
           <div class="actions wide">
@@ -79,7 +82,11 @@
               type="button"
               class="ghost"
               (click)="saveDepot()"
-              [disabled]="savingDepot() || !depot().trim() || !depotLabel().trim()"
+              [disabled]="
+                savingDepot() ||
+                !depotLabel().trim() ||
+                (!hasDepotAddress() && !depotCoordinates().trim())
+              "
             >
               {{ savingDepot() ? 'Saving…' : 'Save for next time' }}
             </button>

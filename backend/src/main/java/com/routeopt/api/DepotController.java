@@ -35,12 +35,19 @@ public class DepotController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public DepotResponse save(@Valid @RequestBody SaveDepotRequest request) {
-        return DepotResponse.from(depots.save(request.name(), request.address()));
+        return DepotResponse.from(depots.save(
+                request.name(),
+                request.address() == null ? null : request.address().toPostalAddress(),
+                request.rawAddress()));
     }
 
     @PatchMapping("/{id}")
     public DepotResponse update(@PathVariable Long id, @RequestBody SaveDepotRequest request) {
-        return DepotResponse.from(depots.update(id, request.name(), request.address()));
+        return DepotResponse.from(depots.update(
+                id,
+                request.name(),
+                request.address() == null ? null : request.address().toPostalAddress(),
+                request.rawAddress()));
     }
 
     @DeleteMapping("/{id}")

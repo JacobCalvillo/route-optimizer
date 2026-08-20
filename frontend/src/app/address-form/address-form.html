@@ -1,0 +1,72 @@
+<div class="address-grid">
+  <label class="street">
+    Street
+    <input
+      type="text"
+      [ngModel]="address().street"
+      (ngModelChange)="patch({ street: $event })"
+      placeholder="Av. Insurgentes Sur"
+    />
+  </label>
+  <label class="narrow">
+    No.
+    <input
+      type="text"
+      [ngModel]="address().exteriorNumber"
+      (ngModelChange)="patch({ exteriorNumber: $event })"
+      placeholder="1602"
+    />
+  </label>
+  <label class="narrow">
+    Int.
+    <input
+      type="text"
+      [ngModel]="address().interiorNumber"
+      (ngModelChange)="patch({ interiorNumber: $event })"
+      placeholder="4B"
+    />
+  </label>
+
+  <label>
+    Colonia / fraccionamiento
+    <input
+      type="text"
+      [ngModel]="address().neighborhood"
+      (ngModelChange)="patch({ neighborhood: $event })"
+      placeholder="Crédito Constructor"
+    />
+  </label>
+  <label class="narrow">
+    Postal code
+    <input
+      type="text"
+      [ngModel]="address().postalCode"
+      (ngModelChange)="patch({ postalCode: $event })"
+      placeholder="03940"
+    />
+  </label>
+
+  <label>
+    City / municipio
+    <input
+      type="text"
+      [ngModel]="address().city"
+      (ngModelChange)="patch({ city: $event })"
+      placeholder="Ciudad de México"
+    />
+  </label>
+  <label>
+    State
+    <input
+      type="text"
+      [ngModel]="address().state"
+      (ngModelChange)="patch({ state: $event })"
+      placeholder="Nuevo León"
+    />
+  </label>
+</div>
+
+<p class="address-hint">
+  City and state are what stop an address landing in the wrong part of the country. The interior
+  number is kept out of the search on purpose — it tells the driver where to knock.
+</p>

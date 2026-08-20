@@ -1,6 +1,7 @@
 package com.routeopt.service;
 
 import com.routeopt.domain.Coordinate;
+import com.routeopt.domain.PostalAddress;
 import com.routeopt.geo.GeocodeResult;
 import com.routeopt.geo.GeocodingService;
 import java.util.Locale;
@@ -34,6 +35,21 @@ public class DepotResolver {
 
     public DepotResolver(GeocodingService geocoding) {
         this.geocoding = geocoding;
+    }
+
+    /** Structured resolution, which finds addresses the free-form search cannot. */
+    public ResolvedDepot resolve(PostalAddress parts, String label) {
+        if (parts == null || !parts.isGeocodable()) {
+            throw new IllegalArgumentException("The depot needs at least a street, city or postal code.");
+        }
+        GeocodeResult result = geocoding.geocode(parts);
+        if (!result.found()) {
+            throw new IllegalArgumentException(
+                    "Could not find the depot address: %s. Check the city and state."
+                            .formatted(parts.toSingleLine()));
+        }
+        return new ResolvedDepot(
+                result.coordinate(), labelOr(label, labelOr(result.displayName(), "Depot")));
     }
 
     public ResolvedDepot resolve(String address, Double lat, Double lon, String label) {

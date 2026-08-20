@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  AddressInput,
   Depot,
   Health,
   ManualOrder,
@@ -56,8 +57,8 @@ export class ApiService {
   }
 
   /** Geocodes once on save, so selecting it later costs nothing. */
-  saveDepot(name: string, address: string): Observable<Depot> {
-    return this.http.post<Depot>(`${this.base}/depots`, { name, address });
+  saveDepot(name: string, address: AddressInput | null, rawAddress?: string): Observable<Depot> {
+    return this.http.post<Depot>(`${this.base}/depots`, { name, address, rawAddress });
   }
 
   deleteDepot(id: number): Observable<void> {
