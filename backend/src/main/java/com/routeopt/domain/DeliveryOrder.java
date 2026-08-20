@@ -58,7 +58,9 @@ public class DeliveryOrder {
     private Instant createdAt = Instant.now();
 
     public boolean isRoutable() {
-        return geocodeStatus == GeocodeStatus.OK && lat != null && lon != null;
+        return (geocodeStatus == GeocodeStatus.OK || geocodeStatus == GeocodeStatus.APPROXIMATE)
+                && lat != null
+                && lon != null;
     }
 
     public Coordinate coordinate() {

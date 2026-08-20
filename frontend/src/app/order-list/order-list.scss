@@ -23,6 +23,11 @@
   li.unresolved {
     border-color: var(--danger);
   }
+
+  /* Routable, but resolved from a simplified address - a caution, not an error. */
+  li.approximate {
+    border-color: var(--urgent);
+  }
 }
 
 .summary {
@@ -53,6 +58,10 @@
 
 .warn {
   color: var(--danger);
+}
+
+.approx {
+  color: var(--urgent);
 }
 
 .edit {

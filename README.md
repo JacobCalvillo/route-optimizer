@@ -65,9 +65,15 @@ The H2 database is a file under `data/`, **relative to the directory you launche
 from the repository root and from `backend/` produces two different databases. `/api/health` reports
 the resolved path so this is never a mystery. Delete that directory to start clean.
 
-> Note: the datasource uses `AUTO_SERVER=TRUE`, so a still-running instance keeps the database open
-> in server mode. Deleting the files while one is alive appears to work and changes nothing — stop
-> every instance first.
+> Two notes on resetting it. `AUTO_SERVER` is deliberately **off**: with it on, a still-running
+> instance keeps the database open in server mode, so deleting the files appears to work and
+> changes nothing. And stopping an instance is not instant — it rewrites its lock file on the way
+> out, so a delete issued immediately after can lose the race. Wait a few seconds.
+
+> `ddl-auto: update` is prototype-grade in a way worth knowing: it **cannot add a `NOT NULL` column
+> to an existing table**, and it only logs a warning when the ALTER fails. The application starts
+> normally and then fails on the first query with "column not found". New columns here are nullable
+> for that reason. Production would use Flyway.
 
 ### Frontend
 
@@ -228,6 +234,26 @@ app:
 `/api/health` reports which provider is live. If OSRM is unreachable the matrix falls back to
 Haversine and says so in the response's `matrixProvider` field, and the geometry is simply omitted
 — the request never fails because of it.
+
+### When a real address will not geocode
+
+A dispatcher writes `Fracc. Felipe Tena Ramirez 101, Praderas de Huinala, 66642 Loma La paz, N.L.`
+and Nominatim returns nothing — yet the street *is* in OpenStreetMap, and
+`Felipe Tena Ramirez 101, Praderas de Huinala` finds it immediately.
+
+What makes that example instructive is that no single transformation fixes it: removing the
+`Fracc.` prefix alone still fails, and trimming the noisy tail alone still fails. Only doing both
+works. So `AddressQueries` builds a **ladder** — the address as written, then progressively cleaner
+and shorter forms — and the geocoder walks it until something matches, capped at five attempts.
+
+Cleaning drops five-digit postal codes (as often wrong as helpful — that one is), strips
+place-type prefixes (`Fracc.`, `Col.`, `Priv.`), and expands state abbreviations (`N.L.` →
+`Nuevo León`). Note `Col.` is treated as *colonia*, not Colima.
+
+The trade-off is precision, and it is reported rather than hidden. Only the first rung counts as an
+exact match; anything later found the street or the neighbourhood, not the number, so the order
+gets `geocodeStatus: APPROXIMATE`. Such orders **do** route — a hundred metres rarely changes the
+sequence — but the UI outlines them in amber and says *street-level match — check it*.
 
 ### A stop in the wrong state
 

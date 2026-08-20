@@ -2,7 +2,7 @@
 
 export type Priority = 'URGENT' | 'NORMAL' | 'LOW';
 
-export type GeocodeStatus = 'PENDING' | 'OK' | 'NO_ADDRESS' | 'FAILED';
+export type GeocodeStatus = 'PENDING' | 'OK' | 'APPROXIMATE' | 'NO_ADDRESS' | 'FAILED';
 
 /** A parsed-but-not-yet-stored order, as returned by POST /api/orders/parse. */
 export interface ParsedOrder {

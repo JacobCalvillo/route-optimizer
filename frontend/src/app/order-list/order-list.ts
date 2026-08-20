@@ -83,8 +83,15 @@ export class OrderList {
     });
   }
 
+  /** Only orders with no usable coordinates. APPROXIMATE ones route fine; they just need a look. */
   unresolvedCount(): number {
-    return this.orders().filter((order) => order.geocodeStatus !== 'OK').length;
+    return this.orders().filter(
+      (order) => order.geocodeStatus !== 'OK' && order.geocodeStatus !== 'APPROXIMATE',
+    ).length;
+  }
+
+  approximateCount(): number {
+    return this.orders().filter((order) => order.geocodeStatus === 'APPROXIMATE').length;
   }
 
   window(order: Order): string {

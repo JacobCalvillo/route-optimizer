@@ -14,7 +14,10 @@
 
   <ul class="orders">
     @for (order of orders(); track order.id) {
-      <li [class.unresolved]="order.geocodeStatus !== 'OK'">
+      <li
+        [class.unresolved]="order.geocodeStatus !== 'OK' && order.geocodeStatus !== 'APPROXIMATE'"
+        [class.approximate]="order.geocodeStatus === 'APPROXIMATE'"
+      >
         @if (editingId() === order.id) {
           <div class="edit">
             <label>

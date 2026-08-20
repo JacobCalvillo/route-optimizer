@@ -174,6 +174,7 @@ public class OrderService {
         List<DeliveryOrder> pending = new ArrayList<>();
         pending.addAll(repository.findByGeocodeStatus(GeocodeStatus.PENDING));
         pending.addAll(repository.findByGeocodeStatus(GeocodeStatus.FAILED));
+        pending.addAll(repository.findByGeocodeStatus(GeocodeStatus.APPROXIMATE));
         pending.forEach(order -> {
             resolveAddress(order);
             repository.save(order);
@@ -191,7 +192,7 @@ public class OrderService {
             order.setLat(result.coordinate().lat());
             order.setLon(result.coordinate().lon());
             order.setNormalizedAddress(result.displayName());
-            order.setGeocodeStatus(GeocodeStatus.OK);
+            order.setGeocodeStatus(result.exact() ? GeocodeStatus.OK : GeocodeStatus.APPROXIMATE);
         } else {
             order.setGeocodeStatus(GeocodeStatus.FAILED);
         }

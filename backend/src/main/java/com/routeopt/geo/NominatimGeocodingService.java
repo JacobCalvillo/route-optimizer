@@ -62,23 +62,43 @@ public class NominatimGeocodingService implements GeocodingService {
         if (cached.isPresent()) {
             GeocodeCacheEntry entry = cached.get();
             log.debug("Geocode cache hit for [{}]", normalized);
-            return entry.isFound()
-                    ? GeocodeResult.found(
-                            new Coordinate(entry.getLat(), entry.getLon()), entry.getDisplayName(), true)
-                    : GeocodeResult.notFound(true);
+            if (!entry.isFound()) {
+                return GeocodeResult.notFound(true);
+            }
+            Coordinate point = new Coordinate(entry.getLat(), entry.getLon());
+            return entry.isExact()
+                    ? GeocodeResult.found(point, entry.getDisplayName(), true)
+                    : GeocodeResult.approximate(
+                            point, entry.getDisplayName(), true, entry.getMatchedQuery());
         }
 
-        NominatimPlace place = callNominatim(address);
-        if (place == null) {
-            cache.save(new GeocodeCacheEntry(hash, normalized, null, null, null, false));
-            log.info("No geocoding match for [{}]", address);
-            return GeocodeResult.notFound(false);
+        // Walk from the address as written down to progressively simpler queries. Only the first
+        // rung counts as an exact match; the rest found the street or the area, not the number.
+        List<String> ladder = AddressQueries.ladder(address);
+        for (int rung = 0; rung < ladder.size(); rung++) {
+            String query = ladder.get(rung);
+            NominatimPlace place = callNominatim(query);
+            if (place == null) {
+                continue;
+            }
+
+            double lat = Double.parseDouble(place.lat());
+            double lon = Double.parseDouble(place.lon());
+            boolean exact = rung == 0;
+            cache.save(new GeocodeCacheEntry(
+                    hash, normalized, place.displayName(), lat, lon, true, exact, query));
+
+            if (exact) {
+                return GeocodeResult.found(new Coordinate(lat, lon), place.displayName(), false);
+            }
+            log.info("Geocoded [{}] only after simplifying it to [{}]", address, query);
+            return GeocodeResult.approximate(
+                    new Coordinate(lat, lon), place.displayName(), false, query);
         }
 
-        double lat = Double.parseDouble(place.lat());
-        double lon = Double.parseDouble(place.lon());
-        cache.save(new GeocodeCacheEntry(hash, normalized, place.displayName(), lat, lon, true));
-        return GeocodeResult.found(new Coordinate(lat, lon), place.displayName(), false);
+        cache.save(new GeocodeCacheEntry(hash, normalized, null, null, null, false, false, null));
+        log.info("No geocoding match for [{}] after {} attempt(s)", address, ladder.size());
+        return GeocodeResult.notFound(false);
     }
 
     private NominatimPlace callNominatim(String address) {
