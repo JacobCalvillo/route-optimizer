@@ -1,12 +1,23 @@
 package com.routeopt.config;
 
+import java.time.LocalTime;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /** Every tunable knob of the application, bound from the {@code app.*} section of application.yml. */
 @ConfigurationProperties(prefix = "app")
-public record AppProperties(Cors cors, Ai ai, Geocoding geocoding, Routing routing) {
+public record AppProperties(
+        Cors cors, Ai ai, Geocoding geocoding, Routing routing, List<Shift> shifts) {
+
+    /**
+     * One driver's working window.
+     *
+     * <p>Shifts run in parallel with different start times, so two eight-hour shifts starting at
+     * 06:00 and 12:00 cover a fourteen-hour operating day with a two-hour overlap - which is what
+     * lets the afternoon driver pick up where the morning one stopped without a handover gap.
+     */
+    public record Shift(String name, LocalTime start, @DefaultValue("8") double maxHours) {}
 
     public record Cors(@DefaultValue("http://localhost:4200") List<String> allowedOrigins) {}
 
@@ -42,6 +53,11 @@ public record AppProperties(Cors cors, Ai ai, Geocoding geocoding, Routing routi
              * than a real delivery. Warned about, never excluded. Zero disables the check.
              */
             @DefaultValue("150") double maxStopDistanceKm,
+            /*
+             * Wall-clock ceiling from the first shift's start. A guardrail above the shifts
+             * themselves: no plan may stretch past this, however many shifts are configured.
+             */
+            @DefaultValue("18") double maxOperationalHours,
             Osrm osrm) {
 
         public record Osrm(

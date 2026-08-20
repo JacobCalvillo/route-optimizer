@@ -44,6 +44,17 @@ app:
     # low | medium | high | xhigh | max (the API only accepts lowercase)
     effort: low
 
+  # Driver shifts, in the order they are filled. They run in parallel, each starting from the
+  # depot at its own time, so the overlap is deliberate: the afternoon driver is already out
+  # before the morning one is due back.
+  shifts:
+    - name: Morning
+      start: "06:00"
+      max-hours: 8
+    - name: Afternoon
+      start: "12:00"
+      max-hours: 8
+
   geocoding:
     base-url: https://nominatim.openstreetmap.org
     # Nominatim's usage policy requires an identifying User-Agent and at most 1 req/s.
@@ -67,6 +78,9 @@ app:
     # A stop further than this from the depot is warned about as a probable geocoding error.
     # It is never excluded from the route. Set to 0 to disable the check.
     max-stop-distance-km: 150
+    # Wall-clock ceiling measured from the first shift's start. Two 8h shifts at 06:00 and 12:00
+    # span 14h, so this is headroom rather than a binding limit at the default settings.
+    max-operational-hours: 18
     osrm:
       base-url: https://router.project-osrm.org
       timeout-seconds: 10

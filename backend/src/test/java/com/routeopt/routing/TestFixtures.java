@@ -15,7 +15,24 @@ final class TestFixtures {
 
     private TestFixtures() {}
 
+    /**
+     * One long shift by default, so tests about sequencing measure sequencing rather than the
+     * split. Tests that care about shifts pass their own.
+     */
     static AppProperties properties(double latePenalty, double priorityPenalty) {
+        return properties(latePenalty, priorityPenalty, List.of(fullDay()));
+    }
+
+    static AppProperties.Shift fullDay() {
+        return new AppProperties.Shift("Day", LocalTime.of(8, 0), 24);
+    }
+
+    static AppProperties.Shift shift(String name, String start, double hours) {
+        return new AppProperties.Shift(name, LocalTime.parse(start), hours);
+    }
+
+    static AppProperties properties(
+            double latePenalty, double priorityPenalty, List<AppProperties.Shift> shifts) {
         return new AppProperties(
                 new AppProperties.Cors(List.of("http://localhost:4200")),
                 new AppProperties.Ai("", "claude-sonnet-5", 8000, "LOW"),
@@ -29,7 +46,14 @@ final class TestFixtures {
                         priorityPenalty,
                         1000,
                         150,
-                        new AppProperties.Routing.Osrm("http://localhost", 10, "full")));
+                        24,
+                        new AppProperties.Routing.Osrm("http://localhost", 10, "full")),
+                shifts);
+    }
+
+    /** The single shift's evaluation, for tests that deal in one route. */
+    static RouteEvaluation onlyShift(OptimizationResult result) {
+        return result.shifts().getFirst().evaluation();
     }
 
     static DistanceMatrixProvider haversineProvider(AppProperties properties) {

@@ -26,6 +26,7 @@ public class RouteOptimizer {
     private final AppProperties properties;
     private final DistanceMatrixProvider matrixProvider;
     private final RouteEvaluator evaluator;
+    private final ShiftPlanner shiftPlanner;
 
     public RouteOptimizer(AppProperties properties, DistanceMatrixProvider matrixProvider) {
         this.properties = properties;
@@ -33,6 +34,7 @@ public class RouteOptimizer {
         this.evaluator = new RouteEvaluator(
                 properties.routing().latePenaltyPerMinute(),
                 properties.routing().priorityPenaltyPerPosition());
+        this.shiftPlanner = new ShiftPlanner(properties, evaluator);
     }
 
     public OptimizationResult optimize(
@@ -72,35 +74,44 @@ public class RouteOptimizer {
                             .formatted(optimized.cost(), initial.cost()));
         }
 
-        optimized.schedule().stream()
+        // Cut the improved tour into one route per driver shift.
+        ShiftPlanner.Result plan = shiftPlanner.plan(optimizedSequence, stops, matrix);
+        warnings.addAll(plan.warnings());
+
+        plan.shifts().forEach(shift -> shift.evaluation().schedule().stream()
                 .filter(StopSchedule::isLate)
                 .forEach(entry -> warnings.add(
-                        "Stop %d (%s) arrives %d minute(s) after its %s deadline"
+                        "%s stop %d (%s) arrives %d minute(s) after its %s deadline"
                                 .formatted(
+                                        shift.name(),
                                         entry.sequence(),
                                         entry.stop().label(),
                                         entry.lateMinutes(),
-                                        entry.stop().timeWindow().to())));
+                                        entry.stop().timeWindow().to()))));
 
         warnings.addAll(implausiblyDistantStops(depot, stops));
 
-        log.info(
-                "Optimized {} stops with {}: {} m -> {} m ({}% better)",
-                stops.size(),
-                matrix.provider(),
-                Math.round(initial.totalDistanceMeters()),
-                Math.round(optimized.totalDistanceMeters()),
-                Math.round((initial.totalDistanceMeters() - optimized.totalDistanceMeters())
-                        / Math.max(1, initial.totalDistanceMeters()) * 100));
-
-        return new OptimizationResult(
+        OptimizationResult result = new OptimizationResult(
                 depot,
                 depotLabel,
-                optimized,
+                plan.shifts(),
+                plan.unscheduled(),
                 initial.totalDistanceMeters(),
+                optimized.totalDistanceMeters(),
                 initial.cost(),
                 matrix.provider(),
                 List.copyOf(warnings));
+
+        log.info(
+                "Optimized {} stops with {} into {} shift(s): {} m -> {} m, {} unscheduled",
+                stops.size(),
+                matrix.provider(),
+                plan.shifts().size(),
+                Math.round(initial.totalDistanceMeters()),
+                Math.round(result.totalDistanceMeters()),
+                plan.unscheduled().size());
+
+        return result;
     }
 
     /**

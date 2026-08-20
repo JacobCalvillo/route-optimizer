@@ -178,8 +178,9 @@ code {
  */
 .leg-legend {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
   padding: 0.3rem 0.5rem;
   border-radius: 6px;
   background: rgb(255 255 255 / 88%);
@@ -191,10 +192,20 @@ code {
   white-space: nowrap;
 }
 
+.leg-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .leg-legend-ramp {
-  width: 5rem;
+  width: 4.5rem;
   height: 0.5rem;
   border-radius: 999px;
+}
+
+.leg-legend-label {
+  min-width: 4.2rem;
 }
 
 .leg-legend-return {
@@ -202,4 +213,13 @@ code {
   border-top-width: 2px;
   border-top-style: dashed;
   margin-left: 0.25rem;
+}
+
+/* A stop no shift had room for: hollow, so it never reads as a numbered stop. */
+.pin-unscheduled {
+  background: transparent;
+  border: 2px dashed #c62828;
+  color: #c62828;
+  box-shadow: none;
+  font-size: 0.9rem;
 }

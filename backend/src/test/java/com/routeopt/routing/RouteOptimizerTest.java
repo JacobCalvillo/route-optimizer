@@ -85,7 +85,7 @@ class RouteOptimizerTest {
         assertThat(result.totalDistanceMeters()).isPositive();
         assertThat(result.improvementPercent()).isGreaterThanOrEqualTo(0);
         assertThat(result.matrixProvider()).isEqualTo("haversine");
-        assertThat(result.evaluation().schedule()).hasSize(stops.size());
+        assertThat(TestFixtures.onlyShift(result).schedule()).hasSize(stops.size());
     }
 
     @Test
@@ -99,9 +99,9 @@ class RouteOptimizerTest {
         OptimizationResult result =
                 optimizerWith(properties).optimize(TestFixtures.DEPOT, "depot", stops, DEPARTURE);
 
-        assertThat(result.evaluation().schedule().stream().map(StopSchedule::sequence).toList())
+        assertThat(TestFixtures.onlyShift(result).schedule().stream().map(StopSchedule::sequence).toList())
                 .containsExactly(1, 2, 3);
-        assertThat(result.evaluation().schedule().stream()
+        assertThat(TestFixtures.onlyShift(result).schedule().stream()
                         .map(entry -> entry.stop().label())
                         .distinct())
                 .hasSize(3);
@@ -120,7 +120,7 @@ class RouteOptimizerTest {
 
         assertThat(result.warnings()).isNotEmpty();
         assertThat(result.warnings().getFirst()).contains("impossible");
-        assertThat(result.evaluation().schedule()).hasSize(2);
+        assertThat(TestFixtures.onlyShift(result).schedule()).hasSize(2);
     }
 
     @Test
@@ -138,8 +138,11 @@ class RouteOptimizerTest {
         assertThat(result.warnings()).anySatisfy(warning -> assertThat(warning)
                 .contains("wrong-state")
                 .contains("from the depot"));
-        // Warned about, never excluded: the operator decides.
-        assertThat(result.evaluation().schedule()).hasSize(2);
+        // Two independent signals now point at the same bad address: the distance warning, and the
+        // fact that a 1,300 km detour does not fit inside a working day, so the planner leaves it
+        // unscheduled rather than producing the 3,200 km route this used to produce.
+        assertThat(result.unscheduled()).extracting(RouteStop::label).contains("wrong-state");
+        assertThat(TestFixtures.onlyShift(result).schedule()).hasSize(1);
     }
 
     @Test
@@ -166,7 +169,7 @@ class RouteOptimizerTest {
     }
 
     private static int positionOf(OptimizationResult result, String label) {
-        return result.evaluation().schedule().stream()
+        return TestFixtures.onlyShift(result).schedule().stream()
                 .filter(entry -> entry.stop().label().equals(label))
                 .findFirst()
                 .orElseThrow()

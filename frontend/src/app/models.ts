@@ -68,26 +68,49 @@ export interface RouteStop {
   lateMinutes: number;
 }
 
-export interface OptimizedRoute {
-  depotLat: number;
-  depotLon: number;
-  depotLabel: string;
-  departureTime: string;
+/** One driver's route within the day. */
+export interface Shift {
+  name: string;
+  start: string;
+  end: string;
+  hours: number;
   stops: RouteStop[];
   totalDistanceMeters: number;
   totalDurationSeconds: number;
   returnToDepotMeters: number;
-  /** Distance of the greedy tour, before 2-opt ran. */
+  lateStopCount: number;
+  /** One road polyline per leg; null when no road data was available. */
+  legs: [number, number][][] | null;
+}
+
+export interface UnscheduledStop {
+  orderId: number | null;
+  label: string;
+  lat: number;
+  lon: number;
+  priority: Priority;
+  reason: string;
+}
+
+export interface OptimizedRoute {
+  depotLat: number;
+  depotLon: number;
+  depotLabel: string;
+  shifts: Shift[];
+  unscheduled: UnscheduledStop[];
+  totalDistanceMeters: number;
+  totalDurationSeconds: number;
+  /** Greedy giant tour, before 2-opt and before the split. */
   initialDistanceMeters: number;
+  /** The same tour after 2-opt, still uncut. improvementPercent compares these two. */
+  improvedTourDistanceMeters: number;
+  /** Extra distance the split costs: one depot return per shift. */
+  splitOverheadMeters: number;
   improvementPercent: number;
+  scheduledStopCount: number;
   lateStopCount: number;
   totalLateMinutes: number;
   matrixProvider: string;
-  /**
-   * One road polyline per leg, each as [lat, lon] pairs. Leg i runs to stop i+1; the last one
-   * returns to the depot. Null when no road data was available.
-   */
-  legs: [number, number][][] | null;
   geometrySource: string | null;
   warnings: string[];
 }
@@ -95,7 +118,8 @@ export interface OptimizedRoute {
 export interface OptimizeRequest {
   /** Either an address to geocode, or explicit coordinates. `address` also accepts "lat, lon". */
   depot: { address?: string; lat?: number; lon?: number; label?: string };
-  departureTime: string;
+  /** Optional: the shifts define when drivers actually leave. */
+  departureTime?: string;
   orderIds?: number[];
 }
 

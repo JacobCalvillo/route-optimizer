@@ -1,46 +1,48 @@
-@if (route(); as optimized) {
+@if (route(); as plan) {
   <section class="panel summary">
     <div class="metrics">
       <div class="metric">
-        <span class="value">{{ kilometres(optimized.totalDistanceMeters) }} km</span>
-        <span class="label">Total distance</span>
+        <span class="value">{{ kilometres(plan.totalDistanceMeters) }} km</span>
+        <span class="label">Distance driven</span>
       </div>
       <div class="metric">
-        <span class="value">{{ duration(optimized.totalDurationSeconds) }}</span>
-        <span class="label">Estimated time</span>
+        <span class="value">{{ plan.shifts.length }}</span>
+        <span class="label">Drivers</span>
       </div>
       <div class="metric">
-        <span class="value">{{ optimized.stops.length }}</span>
-        <span class="label">Stops</span>
+        <span class="value">{{ plan.scheduledStopCount }}</span>
+        <span class="label">Stops scheduled</span>
       </div>
       <div class="metric">
-        <span class="value" [class.good]="optimized.improvementPercent > 0">
-          {{ optimized.improvementPercent }}%
+        <span class="value" [class.good]="plan.improvementPercent > 0">
+          {{ plan.improvementPercent }}%
         </span>
         <span class="label">2-opt improvement</span>
       </div>
     </div>
 
     <p class="hint">
-      Nearest-neighbour tour was {{ kilometres(optimized.initialDistanceMeters) }} km; local search
-      cut it to {{ kilometres(optimized.totalDistanceMeters) }} km. Distances from the
-      <code>{{ optimized.matrixProvider }}</code> provider.
-      @if (optimized.legs?.length) {
-        The line follows the actual streets, shading from light to dark in the order the stops are
-        visited. Hover a segment to identify it.
+      Nearest-neighbour tour was {{ kilometres(plan.initialDistanceMeters) }} km; local search cut
+      it to {{ kilometres(plan.improvedTourDistanceMeters) }} km. Splitting it across
+      {{ plan.shifts.length }} shift(s) adds {{ kilometres(plan.splitOverheadMeters) }} km of
+      depot returns, which is what makes the driven total higher than the tour.
+      Distances from the <code>{{ plan.matrixProvider }}</code> provider.
+      @if (plan.geometrySource) {
+        The lines follow the actual streets, one hue per shift, shading from light to dark in visit
+        order. Hover a segment to identify it.
       } @else {
         No road data was available, so the map draws dashed straight segments between stops.
       }
     </p>
 
-    @if (optimized.warnings.length > 0) {
+    @if (plan.warnings.length > 0) {
       <ul class="warnings">
-        @for (warning of optimized.warnings; track $index) {
+        @for (warning of plan.warnings; track $index) {
           <li>{{ warning }}</li>
         }
       </ul>
     } @else {
-      <p class="ok">Every delivery window is met.</p>
+      <p class="ok">Every delivery window is met and every stop is assigned.</p>
     }
   </section>
 }

@@ -235,6 +235,34 @@ app:
 Haversine and says so in the response's `matrixProvider` field, and the geometry is simply omitted
 — the request never fails because of it.
 
+### Driver shifts
+
+A route is not one continuous run: each driver works a bounded shift and comes back. The default
+configuration is two eight-hour drivers leaving at 06:00 and 12:00, overlapping deliberately so the
+afternoon driver is already out before the morning one is due back. `app.routing.max-operational-hours`
+caps the whole day from the first shift's start, whatever shifts are configured.
+
+The approach is **route-first, cluster-second**: solve the whole delivery set as one tour, then cut
+that tour into per-driver routes. It is a long-standing VRP heuristic, and it earns its place here
+because the giant tour already puts geographic neighbours next to each other, so consecutive runs
+each cover a coherent area. Two details matter:
+
+- A shift's duration counts the drive **back** to the depot. A cut that ignores the return leg
+  produces shifts that overrun by exactly the distance home.
+- Each shift is re-optimized after the cut, against **its own start time**. The giant tour was
+  sequenced on a single clock, so the afternoon driver's delivery windows had been evaluated
+  against the wrong one.
+
+What fits in no shift is returned in `unscheduled` with a reason, rather than crammed in. A plan
+that silently promises an eleven-hour day is worse than one that names the stops that did not make
+it.
+
+> The response carries three distances, and conflating them is a trap worth naming. `initial` is
+> the greedy tour, `improvedTour` is that tour after 2-opt, and `total` is what is actually driven
+> once it is split — which is **higher**, because each shift adds a depot return. `improvementPercent`
+> compares the first two. Comparing greedy against the driven total once reported a headline "0%
+> improvement" on a plan where 2-opt had done its job perfectly well.
+
 ### When a real address will not geocode
 
 A dispatcher writes `Fracc. Felipe Tena Ramirez 101, Praderas de Huinala, 66642 Loma La paz, N.L.`

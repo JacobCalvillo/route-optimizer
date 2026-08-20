@@ -23,8 +23,9 @@ class ClaudeOrderParserTest {
                 new AppProperties.Ai(apiKey, "claude-sonnet-5", 8000, effort),
                 new AppProperties.Geocoding("http://localhost", "test", "mx", 0),
                 new AppProperties.Routing(
-                        "haversine", 1.3, 30, 5, 500, 200, 1000, 150,
-                        new AppProperties.Routing.Osrm("http://localhost", 10, "full")));
+                        "haversine", 1.3, 30, 5, 500, 200, 1000, 150, 24,
+                        new AppProperties.Routing.Osrm("http://localhost", 10, "full")),
+                List.of(new AppProperties.Shift("Day", java.time.LocalTime.of(8, 0), 24)));
     }
 
     @ParameterizedTest

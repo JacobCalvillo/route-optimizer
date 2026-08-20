@@ -3,7 +3,7 @@ package com.routeopt.api;
 import com.routeopt.domain.Coordinate;
 import com.routeopt.domain.DeliveryOrder;
 import com.routeopt.domain.Priority;
-import com.routeopt.routing.OptimizationResult;
+import com.routeopt.routing.RouteStop;
 import com.routeopt.routing.StopSchedule;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -56,7 +56,8 @@ public final class Dtos {
 
     public record OptimizeRequest(
             @NotNull @Valid DepotRequest depot,
-            @NotNull LocalTime departureTime,
+            /* Optional. Only shapes the initial sequencing; each shift is re-timed to its own start. */
+            LocalTime departureTime,
             /* Null or empty means "every routable order currently on file". */
             List<Long> orderIds) {}
 
@@ -139,61 +140,56 @@ public final class Dtos {
         }
     }
 
-    public record OptimizedRouteResponse(
-            double depotLat,
-            double depotLon,
-            String depotLabel,
-            LocalTime departureTime,
+    /** One driver's route: their stops, their clock, and the road they drive. */
+    public record ShiftResponse(
+            String name,
+            LocalTime start,
+            LocalTime end,
+            double hours,
             List<RouteStopResponse> stops,
             long totalDistanceMeters,
             long totalDurationSeconds,
             long returnToDepotMeters,
-            /* Distance of the greedy tour, before 2-opt ran. */
+            int lateStopCount,
+            /* One road polyline per leg; null when no road data was available. */
+            List<List<double[]>> legs) {}
+
+    /** A stop that no configured shift had room for, with the reason it fell out. */
+    public record UnscheduledStopResponse(
+            Long orderId, String label, double lat, double lon, Priority priority, String reason) {
+
+        public static UnscheduledStopResponse from(RouteStop stop, String reason) {
+            return new UnscheduledStopResponse(
+                    stop.orderId(),
+                    stop.label(),
+                    stop.coordinate().lat(),
+                    stop.coordinate().lon(),
+                    stop.priority(),
+                    reason);
+        }
+    }
+
+    public record OptimizedRouteResponse(
+            double depotLat,
+            double depotLon,
+            String depotLabel,
+            List<ShiftResponse> shifts,
+            List<UnscheduledStopResponse> unscheduled,
+            long totalDistanceMeters,
+            long totalDurationSeconds,
+            /* Distance of the greedy giant tour, before 2-opt and before the split into shifts. */
             long initialDistanceMeters,
+            /* The same tour after 2-opt, still uncut. improvementPercent compares these two. */
+            long improvedTourDistanceMeters,
+            /* Extra distance the split costs: one depot return per shift. */
+            long splitOverheadMeters,
             double improvementPercent,
+            int scheduledStopCount,
             int lateStopCount,
             long totalLateMinutes,
             String matrixProvider,
-            /*
-             * One road polyline per leg, each as [lat, lon] pairs. Leg i runs from stop i to stop
-             * i+1, and the last one returns to the depot. Split per leg so the client can style
-             * each independently. Null when no road data was available, which tells the client to
-             * draw straight segments and label them as an approximation rather than passing them
-             * off as a real route.
-             */
-            List<List<double[]>> legs,
             String geometrySource,
-            List<String> warnings) {
-
-        public static OptimizedRouteResponse from(
-                OptimizationResult result,
-                LocalTime departureTime,
-                List<List<Coordinate>> roadLegs) {
-            return new OptimizedRouteResponse(
-                    result.depot().lat(),
-                    result.depot().lon(),
-                    result.depotLabel(),
-                    departureTime,
-                    result.evaluation().schedule().stream().map(RouteStopResponse::from).toList(),
-                    Math.round(result.totalDistanceMeters()),
-                    Math.round(result.evaluation().totalDurationSeconds()),
-                    Math.round(result.evaluation().returnToDepotMeters()),
-                    Math.round(result.initialDistanceMeters()),
-                    Math.round(result.improvementPercent() * 10) / 10.0,
-                    result.evaluation().lateStopCount(),
-                    result.evaluation().totalLateMinutes(),
-                    result.matrixProvider(),
-                    roadLegs == null || roadLegs.isEmpty()
-                            ? null
-                            : roadLegs.stream()
-                                    .map(leg -> leg.stream()
-                                            .map(point -> new double[] {point.lat(), point.lon()})
-                                            .toList())
-                                    .toList(),
-                    roadLegs == null || roadLegs.isEmpty() ? null : "osrm",
-                    result.warnings());
-        }
-    }
+            List<String> warnings) {}
 
     public record HealthResponse(
             String status,

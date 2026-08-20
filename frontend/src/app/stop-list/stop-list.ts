@@ -1,7 +1,8 @@
 import { Component, input } from '@angular/core';
 import { OptimizedRoute, RouteStop } from '../models';
+import { shiftColor } from '../route-map/leg-colors';
 
-/** The optimized sequence, in the same order the map numbers the markers. */
+/** The plan, grouped by driver, in the same order the map numbers each shift's markers. */
 @Component({
   selector: 'app-stop-list',
   imports: [],
@@ -10,6 +11,10 @@ import { OptimizedRoute, RouteStop } from '../models';
 })
 export class StopList {
   readonly route = input.required<OptimizedRoute | null>();
+
+  colorFor(shiftIndex: number): string {
+    return shiftColor(shiftIndex);
+  }
 
   kilometres(meters: number): string {
     return (meters / 1000).toFixed(1);

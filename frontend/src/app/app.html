@@ -31,7 +31,7 @@
 
   <div class="column">
     <section class="panel">
-      <h2>Route</h2>
+      <h2>Plan the day</h2>
       <div class="depot-form">
         <label>
           Depot label
@@ -50,15 +50,11 @@
             placeholder="Av. Chapultepec 1, Ciudad de Mexico"
           />
         </label>
-        <label>
-          Departure
-          <input
-            type="time"
-            [ngModel]="departureTime()"
-            (ngModelChange)="departureTime.set($event)"
-          />
-        </label>
       </div>
+      <p class="hint shift-note">
+        Drivers leave on their configured shifts. Anything that does not fit within their hours is
+        listed as not scheduled rather than crammed in.
+      </p>
       <button
         type="button"
         class="primary wide"

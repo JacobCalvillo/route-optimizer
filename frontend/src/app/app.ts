@@ -27,7 +27,6 @@ export class App {
   // address too - the backend geocodes anything that is not a "lat, lon" pair.
   readonly depot = signal('19.4326, -99.1332');
   readonly depotLabel = signal('Central Warehouse');
-  readonly departureTime = signal('08:00');
 
   constructor() {
     this.refreshHealth();
@@ -62,7 +61,6 @@ export class App {
     this.api
       .optimize({
         depot: { address: this.depot().trim(), label: this.depotLabel() },
-        departureTime: this.departureTime(),
       })
       .subscribe({
         next: (route) => {

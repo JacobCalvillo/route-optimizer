@@ -7,7 +7,7 @@ import {
   viewChild,
 } from '@angular/core';
 import * as L from 'leaflet';
-import { OptimizedRoute, Order, RouteStop } from '../models';
+import { OptimizedRoute, Order, Shift } from '../models';
 import { RETURN_LEG_COLOR, legColor, rampCss } from './leg-colors';
 
 /** Mexico City, used until there is anything to fit the view to. */
@@ -18,11 +18,11 @@ const LEG_WEIGHT_HOVER = 9;
 const RETURN_LEG_WEIGHT = 3;
 
 /**
- * Leaflet map showing the depot, the stops numbered in visit order, and the route itself.
+ * Leaflet map showing the depot and one route per driver shift.
  *
- * <p>Each leg is drawn as its own polyline so it can carry its position in the sequence as colour:
- * a single hue running light to dark, so the direction of travel is readable without chasing
- * marker numbers. See {@link legColor} for why it is one hue and not a set of unrelated ones.
+ * <p>Each leg is drawn as its own polyline so it can carry two facts at once: the shift that
+ * drives it, as a hue, and its position in that shift's sequence, as light-to-dark within the hue.
+ * See {@link legColor} for why position is one hue rather than a set of unrelated colours.
  *
  * <p>Markers are built with {@link L.divIcon} rather than image icons: it renders the sequence
  * number directly, and it sidesteps Leaflet's default-icon path problem in bundled apps entirely.
@@ -67,10 +67,7 @@ export class RouteMap {
   }
 
   private initMap(): void {
-    this.map = L.map(this.mapEl().nativeElement, {
-      center: FALLBACK_CENTER,
-      zoom: 12,
-    });
+    this.map = L.map(this.mapEl().nativeElement, { center: FALLBACK_CENTER, zoom: 12 });
 
     // Attribution is required by the OpenStreetMap tile usage policy.
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -92,11 +89,12 @@ export class RouteMap {
     this.removeLegend();
 
     if (route) {
-      this.renderRoute(overlay, route);
-      const points: L.LatLngExpression[] = [
-        [route.depotLat, route.depotLon],
-        ...route.stops.map((stop) => [stop.lat, stop.lon] as L.LatLngExpression),
-      ];
+      this.renderPlan(overlay, route);
+      const points: L.LatLngExpression[] = [[route.depotLat, route.depotLon]];
+      route.shifts.forEach((shift) =>
+        shift.stops.forEach((stop) => points.push([stop.lat, stop.lon])),
+      );
+      route.unscheduled.forEach((stop) => points.push([stop.lat, stop.lon]));
       map.fitBounds(L.latLngBounds(points).pad(0.15));
       return;
     }
@@ -117,13 +115,29 @@ export class RouteMap {
     });
 
     if (located.length > 0) {
-      const bounds = L.latLngBounds(located.map((o) => [o.lat!, o.lon!] as L.LatLngExpression));
-      map.fitBounds(bounds.pad(0.2));
+      map.fitBounds(
+        L.latLngBounds(located.map((o) => [o.lat!, o.lon!] as L.LatLngExpression)).pad(0.2),
+      );
     }
   }
 
-  private renderRoute(overlay: L.LayerGroup, route: OptimizedRoute): void {
-    this.renderLegs(overlay, route);
+  private renderPlan(overlay: L.LayerGroup, route: OptimizedRoute): void {
+    route.shifts.forEach((shift, shiftIndex) => this.renderShift(overlay, route, shift, shiftIndex));
+
+    // Stops nobody had room for. Hollow and grey so they read as "not planned", not as a stop
+    // whose number you missed.
+    route.unscheduled.forEach((stop) => {
+      L.marker([stop.lat, stop.lon], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div class="pin pin-unscheduled">!</div>',
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        }),
+      })
+        .bindTooltip(`Not scheduled — ${stop.label}`)
+        .addTo(overlay);
+    });
 
     L.marker([route.depotLat, route.depotLon], {
       icon: L.divIcon({
@@ -137,45 +151,59 @@ export class RouteMap {
       .bindTooltip(route.depotLabel || 'Depot')
       .addTo(overlay);
 
-    route.stops.forEach((stop) => {
+    this.addLegend(route);
+  }
+
+  private renderShift(
+    overlay: L.LayerGroup,
+    route: OptimizedRoute,
+    shift: Shift,
+    shiftIndex: number,
+  ): void {
+    if (shift.legs?.length) {
+      shift.legs.forEach((leg, index) => {
+        if (leg.length >= 2) {
+          this.addLeg(overlay, leg, index, shift.legs!.length, shift, shiftIndex, false);
+        }
+      });
+    } else {
+      // No road data. Dashed straight segments, so it reads as the approximation it is rather
+      // than a route that happens to ignore every street.
+      const points: [number, number][] = [
+        [route.depotLat, route.depotLon],
+        ...shift.stops.map((stop) => [stop.lat, stop.lon] as [number, number]),
+        [route.depotLat, route.depotLon],
+      ];
+      for (let i = 0; i < points.length - 1; i++) {
+        this.addLeg(
+          overlay,
+          [points[i], points[i + 1]],
+          i,
+          points.length - 1,
+          shift,
+          shiftIndex,
+          true,
+        );
+      }
+    }
+
+    shift.stops.forEach((stop) => {
       const lateClass = stop.lateMinutes > 0 ? ' pin-late' : '';
       L.marker([stop.lat, stop.lon], {
         icon: L.divIcon({
           className: '',
-          html: `<div class="pin pin-${stop.priority.toLowerCase()}${lateClass}">${stop.sequence}</div>`,
+          html:
+            `<div class="pin pin-${stop.priority.toLowerCase()}${lateClass}"` +
+            ` style="outline:2px solid ${legColor(shift.stops.length - 1, shift.stops.length, shiftIndex)}">` +
+            `${stop.sequence}</div>`,
           iconSize: [28, 28],
           iconAnchor: [14, 14],
         }),
         zIndexOffset: 500,
       })
-        .bindTooltip(`${stop.sequence}. ${stop.label} — ETA ${stop.eta}`)
+        .bindTooltip(`${shift.name} ${stop.sequence}. ${stop.label} — ETA ${stop.eta}`)
         .addTo(overlay);
     });
-  }
-
-  private renderLegs(overlay: L.LayerGroup, route: OptimizedRoute): void {
-    if (!route.legs?.length) {
-      // No road data. Draw the tour as dashed straight segments so it reads as the approximation
-      // it is, rather than as a route that happens to ignore every street. Still coloured by
-      // position, so the direction of travel survives the degradation.
-      const points: [number, number][] = [
-        [route.depotLat, route.depotLon],
-        ...route.stops.map((stop) => [stop.lat, stop.lon] as [number, number]),
-        [route.depotLat, route.depotLon],
-      ];
-      for (let i = 0; i < points.length - 1; i++) {
-        this.addLeg(overlay, [points[i], points[i + 1]], i, points.length - 1, route, true);
-      }
-      this.addLegend(route.stops.length, true);
-      return;
-    }
-
-    route.legs.forEach((leg, index) => {
-      if (leg.length >= 2) {
-        this.addLeg(overlay, leg, index, route.legs!.length, route, false);
-      }
-    });
-    this.addLegend(route.stops.length, false);
   }
 
   private addLeg(
@@ -183,12 +211,15 @@ export class RouteMap {
     points: [number, number][],
     index: number,
     total: number,
-    route: OptimizedRoute,
+    shift: Shift,
+    shiftIndex: number,
     approximate: boolean,
   ): void {
     // The final leg returns to the depot without delivering anything, so it stays out of the ramp.
     const isReturn = index === total - 1;
-    const color = isReturn ? RETURN_LEG_COLOR : legColor(index, Math.max(1, total - 1));
+    const color = isReturn
+      ? RETURN_LEG_COLOR
+      : legColor(index, Math.max(1, total - 1), shiftIndex);
 
     // Full opacity on the return leg so its black reads as black rather than compositing to grey
     // against the tiles. The dashes and the thinner stroke are what set it apart, not a tint.
@@ -202,47 +233,46 @@ export class RouteMap {
       dashArray: approximate || isReturn ? '8 8' : undefined,
     });
 
-    line.bindTooltip(this.legLabel(index, total, route, approximate), { sticky: true });
+    line.bindTooltip(this.legLabel(index, total, shift, approximate), { sticky: true });
 
-    // Hover is what makes an individual leg identifiable past the five steps the ramp can hold.
+    // Hover is what makes an individual leg identifiable past the five steps a ramp can hold.
     line.on('mouseover', () => line.setStyle({ weight: LEG_WEIGHT_HOVER, opacity: 1 }));
     line.on('mouseout', () => line.setStyle({ weight, opacity }));
 
     line.addTo(overlay);
   }
 
-  private legLabel(
-    index: number,
-    total: number,
-    route: OptimizedRoute,
-    approximate: boolean,
-  ): string {
+  private legLabel(index: number, total: number, shift: Shift, approximate: boolean): string {
     const suffix = approximate ? ' (straight-line estimate)' : '';
     if (index === total - 1) {
-      return `Return to ${route.depotLabel || 'depot'}${suffix}`;
+      return `${shift.name}: return to depot${suffix}`;
     }
-    const to: RouteStop = route.stops[index];
-    const from = index === 0 ? route.depotLabel || 'Depot' : `Stop ${index}`;
+    const to = shift.stops[index];
+    const from = index === 0 ? 'depot' : `stop ${index}`;
     const km = (to.distanceFromPreviousMeters / 1000).toFixed(1);
-    return `Leg ${index + 1}: ${from} → stop ${to.sequence} · ${km} km · arrives ${to.eta}${suffix}`;
+    return `${shift.name} leg ${index + 1}: ${from} → stop ${to.sequence} · ${km} km · arrives ${to.eta}${suffix}`;
   }
 
-  private addLegend(stopCount: number, approximate: boolean): void {
-    if (!this.map || stopCount < 2) {
+  private addLegend(route: OptimizedRoute): void {
+    if (!this.map || route.shifts.length === 0) {
       return;
     }
     const control = new L.Control({ position: 'bottomleft' });
     control.onAdd = () => {
       const box = L.DomUtil.create('div', 'leg-legend');
-      box.innerHTML = `
-        <span class="leg-legend-label">Departure</span>
-        <span class="leg-legend-ramp" style="background:${rampCss()}"></span>
-        <span class="leg-legend-label">Last stop</span>
-        <span class="leg-legend-return" style="border-color:${RETURN_LEG_COLOR}"></span>
-        <span class="leg-legend-label">Return</span>`;
-      if (approximate) {
-        box.title = 'Dashed: straight-line estimate, no road data';
-      }
+      box.innerHTML =
+        route.shifts
+          .map(
+            (shift, index) =>
+              `<span class="leg-legend-row">` +
+              `<span class="leg-legend-label">${shift.name}</span>` +
+              `<span class="leg-legend-ramp" style="background:${rampCss(index)}"></span>` +
+              `</span>`,
+          )
+          .join('') +
+        `<span class="leg-legend-row">` +
+        `<span class="leg-legend-return" style="border-color:${RETURN_LEG_COLOR}"></span>` +
+        `<span class="leg-legend-label">Return</span></span>`;
       return box;
     };
     control.addTo(this.map);

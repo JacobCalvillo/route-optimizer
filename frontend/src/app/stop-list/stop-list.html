@@ -1,34 +1,72 @@
-@if (route(); as optimized) {
+@if (route(); as plan) {
   <section class="panel">
-    <h2>Stops in order</h2>
-    <ol class="stops">
-      @for (stop of optimized.stops; track stop.sequence) {
-        <li [class.late]="stop.lateMinutes > 0">
-          <span class="seq">{{ stop.sequence }}</span>
-          <div class="body">
-            <span class="label">{{ stop.label }}</span>
-            <span class="meta">
-              ETA {{ stop.eta }}
-              @if (window(stop); as w) {
-                · window {{ w }}
-              }
-              · {{ kilometres(stop.distanceFromPreviousMeters) }} km from previous
-            </span>
-            @if (stop.waitMinutes > 0) {
-              <span class="meta">Waits {{ stop.waitMinutes }} min for the window to open</span>
-            }
-            @if (stop.lateMinutes > 0) {
-              <span class="violation">
-                Arrives {{ stop.lateMinutes }} min after the {{ stop.timeTo }} deadline
+    <h2>The plan</h2>
+
+    @for (shift of plan.shifts; track shift.name; let i = $index) {
+      <div class="shift">
+        <header class="shift-head" [style.border-left-color]="colorFor(i)">
+          <span class="shift-name">{{ shift.name }}</span>
+          <span class="shift-meta">
+            {{ shift.start }} – {{ shift.end }} · {{ shift.hours }} h ·
+            {{ kilometres(shift.totalDistanceMeters) }} km · {{ shift.stops.length }} stops
+          </span>
+        </header>
+
+        <ol class="stops">
+          @for (stop of shift.stops; track stop.sequence) {
+            <li [class.late]="stop.lateMinutes > 0">
+              <span class="seq" [style.background]="colorFor(i)">{{ stop.sequence }}</span>
+              <div class="body">
+                <span class="label">{{ stop.label }}</span>
+                <span class="meta">
+                  ETA {{ stop.eta }}
+                  @if (window(stop); as w) {
+                    · window {{ w }}
+                  }
+                  · {{ kilometres(stop.distanceFromPreviousMeters) }} km from previous
+                </span>
+                @if (stop.waitMinutes > 0) {
+                  <span class="meta">Waits {{ stop.waitMinutes }} min for the window to open</span>
+                }
+                @if (stop.lateMinutes > 0) {
+                  <span class="violation">
+                    Arrives {{ stop.lateMinutes }} min after the {{ stop.timeTo }} deadline
+                  </span>
+                }
+              </div>
+              <span class="chip" [class]="'chip-' + stop.priority.toLowerCase()">
+                {{ stop.priority }}
               </span>
-            }
-          </div>
-          <span class="chip" [class]="'chip-' + stop.priority.toLowerCase()">{{ stop.priority }}</span>
-        </li>
-      }
-    </ol>
-    <p class="hint">
-      Then returns to {{ optimized.depotLabel }} ({{ kilometres(optimized.returnToDepotMeters) }} km).
-    </p>
+            </li>
+          }
+        </ol>
+        <p class="hint">
+          Returns to {{ plan.depotLabel }} ({{ kilometres(shift.returnToDepotMeters) }} km).
+        </p>
+      </div>
+    }
+
+    @if (plan.unscheduled.length > 0) {
+      <div class="shift unscheduled">
+        <header class="shift-head">
+          <span class="shift-name">Not scheduled ({{ plan.unscheduled.length }})</span>
+          <span class="shift-meta">No shift had room for these within its hours</span>
+        </header>
+        <ul class="stops">
+          @for (stop of plan.unscheduled; track $index) {
+            <li>
+              <span class="seq seq-none">!</span>
+              <div class="body">
+                <span class="label">{{ stop.label }}</span>
+                <span class="meta">{{ stop.reason }}</span>
+              </div>
+              <span class="chip" [class]="'chip-' + stop.priority.toLowerCase()">
+                {{ stop.priority }}
+              </span>
+            </li>
+          }
+        </ul>
+      </div>
+    }
   </section>
 }
