@@ -23,9 +23,9 @@ export class App {
   readonly optimizing = signal(false);
   readonly error = signal<string | null>(null);
 
-  // Defaults to the centre of Mexico City so the example orders route sensibly out of the box.
-  readonly depotLat = signal(19.4326);
-  readonly depotLon = signal(-99.1332);
+  // Coordinates by default so the app works offline out of the box, but the field takes an
+  // address too - the backend geocodes anything that is not a "lat, lon" pair.
+  readonly depot = signal('19.4326, -99.1332');
   readonly depotLabel = signal('Central Warehouse');
   readonly departureTime = signal('08:00');
 
@@ -61,7 +61,7 @@ export class App {
     this.error.set(null);
     this.api
       .optimize({
-        depot: { lat: this.depotLat(), lon: this.depotLon(), label: this.depotLabel() },
+        depot: { address: this.depot().trim(), label: this.depotLabel() },
         departureTime: this.departureTime(),
       })
       .subscribe({

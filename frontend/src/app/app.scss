@@ -75,7 +75,11 @@
   }
 }
 
-.wide {
+.depot-form .wide {
+  grid-column: 1 / -1;
+}
+
+button.wide {
   width: 100%;
 }
 

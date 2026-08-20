@@ -41,22 +41,13 @@
             (ngModelChange)="depotLabel.set($event)"
           />
         </label>
-        <label>
-          Latitude
+        <label class="wide">
+          Depot address or coordinates
           <input
-            type="number"
-            step="0.0001"
-            [ngModel]="depotLat()"
-            (ngModelChange)="depotLat.set(+$event)"
-          />
-        </label>
-        <label>
-          Longitude
-          <input
-            type="number"
-            step="0.0001"
-            [ngModel]="depotLon()"
-            (ngModelChange)="depotLon.set(+$event)"
+            type="text"
+            [ngModel]="depot()"
+            (ngModelChange)="depot.set($event)"
+            placeholder="Av. Chapultepec 1, Ciudad de Mexico"
           />
         </label>
         <label>
@@ -72,7 +63,7 @@
         type="button"
         class="primary wide"
         (click)="optimize()"
-        [disabled]="optimizing() || routableCount() === 0"
+        [disabled]="optimizing() || routableCount() === 0 || !depot().trim()"
       >
         {{ optimizing() ? 'Optimizing…' : 'Optimize route (' + routableCount() + ' stops)' }}
       </button>

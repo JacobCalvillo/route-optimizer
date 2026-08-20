@@ -93,7 +93,8 @@ export interface OptimizedRoute {
 }
 
 export interface OptimizeRequest {
-  depot: { lat: number; lon: number; label: string };
+  /** Either an address to geocode, or explicit coordinates. `address` also accepts "lat, lon". */
+  depot: { address?: string; lat?: number; lon?: number; label?: string };
   departureTime: string;
   orderIds?: number[];
 }

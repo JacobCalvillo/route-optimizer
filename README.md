@@ -132,15 +132,30 @@ rather than merely claimed (typically 15–25%).
 | `PATCH` | `/api/orders/{id}` | Correct an order; re-geocodes when the address changes |
 | `DELETE` | `/api/orders/{id}` | Delete an order |
 | `POST` | `/api/orders/geocode-retry` | Retry orders still `PENDING` or `FAILED` |
-| `POST` | `/api/routes/optimize` | Optimize; body takes `depot`, `departureTime`, optional `orderIds` |
+| `POST` | `/api/routes/optimize` | Optimize; `depot` takes an address or coordinates, plus `departureTime` and optional `orderIds` |
 
 ```powershell
 curl -X POST http://localhost:8080/api/orders -H "Content-Type: application/json" `
   -d '{\"text\":\"entregar en Av. Insurgentes Sur 1602, urgente; Masaryk 111 antes de las 13:00\"}'
 
 curl -X POST http://localhost:8080/api/routes/optimize -H "Content-Type: application/json" `
-  -d '{\"depot\":{\"lat\":19.4326,\"lon\":-99.1332,\"label\":\"Central Warehouse\"},\"departureTime\":\"08:00\"}'
+  -d '{\"depot\":{\"address\":\"Zocalo, Ciudad de Mexico\"},\"departureTime\":\"08:00\"}'
 ```
+
+### The depot
+
+`depot` accepts three shapes, resolved in this order:
+
+```jsonc
+{ "lat": 19.4326, "lon": -99.1332 }   // explicit coordinates
+{ "address": "19.4326, -99.1332" }    // a pasted coordinate pair
+{ "address": "Zocalo, Ciudad de Mexico" }  // geocoded like any delivery
+```
+
+The middle case is why the UI needs only one text field: a bare numeric pair short-circuits to
+coordinates, and anything else goes through the same geocoder and cache the deliveries use.
+`Reforma 222` is not mistaken for a pair. When no label is given, the depot is named after where it
+actually resolved, so the map tooltip shows the geocoder's answer rather than what was typed.
 
 ---
 

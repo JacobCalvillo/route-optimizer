@@ -42,9 +42,16 @@ public final class Dtos {
             String customerName,
             String notes) {}
 
+    /**
+     * The depot, given either as an address to geocode or as explicit coordinates.
+     *
+     * <p>No field is required on its own: {@code DepotResolver} enforces that at least one usable
+     * combination arrived, because bean validation cannot express "address, or both lat and lon".
+     */
     public record DepotRequest(
-            @NotNull @DecimalMin("-90") @DecimalMax("90") Double lat,
-            @NotNull @DecimalMin("-180") @DecimalMax("180") Double lon,
+            String address,
+            @DecimalMin("-90") @DecimalMax("90") Double lat,
+            @DecimalMin("-180") @DecimalMax("180") Double lon,
             String label) {}
 
     public record OptimizeRequest(

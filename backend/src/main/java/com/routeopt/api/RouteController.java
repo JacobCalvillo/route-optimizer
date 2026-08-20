@@ -9,6 +9,8 @@ import com.routeopt.routing.OptimizationResult;
 import com.routeopt.routing.RouteGeometryProvider;
 import com.routeopt.routing.RouteOptimizer;
 import com.routeopt.routing.RouteStop;
+import com.routeopt.service.DepotResolver;
+import com.routeopt.service.DepotResolver.ResolvedDepot;
 import com.routeopt.service.OrderService;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
@@ -25,16 +27,19 @@ public class RouteController {
     private final OrderService orders;
     private final RouteOptimizer optimizer;
     private final RouteGeometryProvider geometryProvider;
+    private final DepotResolver depotResolver;
     private final AppProperties properties;
 
     public RouteController(
             OrderService orders,
             RouteOptimizer optimizer,
             RouteGeometryProvider geometryProvider,
+            DepotResolver depotResolver,
             AppProperties properties) {
         this.orders = orders;
         this.optimizer = optimizer;
         this.geometryProvider = geometryProvider;
+        this.depotResolver = depotResolver;
         this.properties = properties;
     }
 
@@ -56,17 +61,19 @@ public class RouteController {
                             + "Fix the addresses or call POST /api/orders/geocode-retry first.");
         }
 
-        Coordinate depot = new Coordinate(request.depot().lat(), request.depot().lon());
+        ResolvedDepot depot = depotResolver.resolve(
+                request.depot().address(),
+                request.depot().lat(),
+                request.depot().lon(),
+                request.depot().label());
+
         OptimizationResult result = optimizer.optimize(
-                depot,
-                request.depot().label() == null ? "Depot" : request.depot().label(),
-                stops,
-                request.departureTime());
+                depot.coordinate(), depot.label(), stops, request.departureTime());
 
         // Geometry is asked for only after the order is known, and only for display. A failure
         // here degrades the drawing, never the route.
         List<List<Coordinate>> legs =
-                geometryProvider.legsFor(tourCoordinates(depot, result)).orElse(null);
+                geometryProvider.legsFor(tourCoordinates(depot.coordinate(), result)).orElse(null);
 
         return OptimizedRouteResponse.from(result, request.departureTime(), legs);
     }
