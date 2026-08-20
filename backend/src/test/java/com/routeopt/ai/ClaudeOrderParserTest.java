@@ -20,7 +20,7 @@ class ClaudeOrderParserTest {
     private static AppProperties propertiesWith(String apiKey, String effort) {
         return new AppProperties(
                 new AppProperties.Cors(List.of("http://localhost:4200")),
-                new AppProperties.Ai(apiKey, "claude-opus-5", 8000, effort),
+                new AppProperties.Ai(apiKey, "claude-sonnet-5", 8000, effort),
                 new AppProperties.Geocoding("http://localhost", "test", "mx", 0),
                 new AppProperties.Routing(
                         "haversine", 1.3, 30, 5, 500, 200, 1000, 150,

@@ -18,7 +18,7 @@ final class TestFixtures {
     static AppProperties properties(double latePenalty, double priorityPenalty) {
         return new AppProperties(
                 new AppProperties.Cors(List.of("http://localhost:4200")),
-                new AppProperties.Ai("", "claude-opus-5", 8000, "LOW"),
+                new AppProperties.Ai("", "claude-sonnet-5", 8000, "LOW"),
                 new AppProperties.Geocoding("http://localhost", "test", "mx", 0),
                 new AppProperties.Routing(
                         "haversine",

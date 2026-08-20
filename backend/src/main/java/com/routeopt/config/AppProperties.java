@@ -13,10 +13,11 @@ public record AppProperties(Cors cors, Ai ai, Geocoding geocoding, Routing routi
     public record Ai(
             /* Bound from ANTHROPIC_API_KEY (environment or backend/.env). Blank disables parsing. */
             @DefaultValue("") String apiKey,
-            @DefaultValue("claude-opus-5") String model,
+            @DefaultValue("claude-sonnet-5") String model,
             /*
-             * On claude-opus-5 thinking is on by default and max-tokens caps thinking plus the
-             * answer, so a value tuned for the JSON alone would truncate the response.
+             * These models reason before answering, and max-tokens caps the reasoning plus the
+             * answer together, so a value tuned for the JSON alone would truncate the response
+             * intermittently. The headroom here is deliberate; `effort` is what keeps it cheap.
              */
             @DefaultValue("8000") long maxTokens,
             @DefaultValue("low") String effort) {}
